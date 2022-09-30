@@ -36,11 +36,11 @@ _C.MAIN.VAL_SCENE_LIST = ['oLBMNvg9in8_0', 'TbHJrupSAjP_0', 'QUCTc6BB5sX_0', 'EU
 
 #==================================== for sensor =======================
 _C.SENSOR = CN()
-_C.SENSOR.DEPTH_MIN = 0.0
-_C.SENSOR.DEPTH_MAX = 10.0
-_C.SENSOR.SENSOR_HEIGHT = 1.25
-_C.SENSOR.AGENT_HEIGHT = 1.5
-_C.SENSOR.AGENT_RADIUS = 0.1
+_C.SENSOR.DEPTH_MIN = 0.5
+_C.SENSOR.DEPTH_MAX = 5.0
+_C.SENSOR.SENSOR_HEIGHT = 0.88
+_C.SENSOR.AGENT_HEIGHT = 0.88
+_C.SENSOR.AGENT_RADIUS = 0.18
 
 #================================ for semantic map ===============================
 _C.SEM_MAP = CN()
@@ -99,69 +99,12 @@ _C.FE.GROUP_INFLATION_RADIUS = 0
 _C.EVAL = CN()
 _C.EVAL.USE_ALL_START_POINTS = False
 
-#============================== for model prediction ===================================
-_C.PRED = CN()
-
-#========================= input partial map===============
-_C.PRED.PARTIAL_MAP = CN()
-# observed neighborhood size of the agent
-_C.PRED.PARTIAL_MAP.NEIGHBOR_SIZE = 10
-# devide the real area by a constant
-_C.PRED.PARTIAL_MAP.DIVIDE_AREA = 1000 
-# number of workers for the dataloader
-_C.PRED.PARTIAL_MAP.NUM_WORKERS = 1
-# batch size
-_C.PRED.PARTIAL_MAP.BATCH_SIZE = 4
-# input map size in to the model (W, H)
-_C.PRED.PARTIAL_MAP.INPUT_WH = (128, 128)
-# model name
-_C.PRED.PARTIAL_MAP.CHECKNAME = 'unet'
-# loss function
-_C.PRED.PARTIAL_MAP.LOSS_TYPE = 'CE'
-# number of training epoches
-_C.PRED.PARTIAL_MAP.EPOCHS = 5
-# start learning rate
-_C.PRED.PARTIAL_MAP.LR = 0.1
-# scheduler
-_C.PRED.PARTIAL_MAP.LR_SCHEDULER = 'poly'
-# resume model trajectory
-_C.PRED.PARTIAL_MAP.RESUME = ''
-# between the number of interval we will evaluate the model on the validation set
-_C.PRED.PARTIAL_MAP.EVAL_INTERVAL = 2
-# name of the dataset
-_C.PRED.PARTIAL_MAP.DATASET = 'MP3D'
-# model weights saving folder
-_C.PRED.PARTIAL_MAP.SAVED_FOLDER = 'output/VIS_PREDICT_occ_map'
-# input type of the model, having semantic map or not
-_C.PRED.PARTIAL_MAP.INPUT = 'occ_only' #select from ['occ_and_sem', 'occ_only']
-# number of the input channels of UNet
-_C.PRED.PARTIAL_MAP.INPUT_CHANNEL = 1 
-# number of output channels of UNet
-_C.PRED.PARTIAL_MAP.OUTPUT_CHANNEL = 1 
-# device number
-_C.PRED.PARTIAL_MAP.DEVICE = 'cuda'
-# number of generated samples per scene, used for data generator
-_C.PRED.PARTIAL_MAP.NUM_GENERATED_SAMPLES_PER_SCENE = 10000
-# Number of the step gap when saving the map
-_C.PRED.PARTIAL_MAP.STEP_GAP = 1
-# Number of processes to generate data
-_C.PRED.PARTIAL_MAP.NUM_PROCESS = 4
-# Use MPI4py
-_C.PRED.PARTIAL_MAP.multiprocessing = 'mp' # 'single', 'mp', 'mpi4py'
-# folder to save the generated data
-_C.PRED.PARTIAL_MAP.GEN_SAMPLES_SAVED_FOLDER = 'output/model_weights_UNet_input_partial_map'
-
-#========================= input partial map===============
-_C.PRED.VIEW = CN()
-
-
 #=========================== multiprocessing =======================
 _C.MP = CN()
 # num of gpus to use for running the test
 _C.MP.GPU_CAPACITY = 1
 # number of processes running on a GPU
 _C.MP.PROC_PER_GPU = 1
-
 
 #========================== experiments =============================
 _C.EXPERIMENTS = CN()
@@ -175,6 +118,6 @@ _C.LN.FLAG_VISUALIZE_LOCAL_MAP = False
 _C.NAVI.FLAG_VISUALIZE_FINAL_TRAJ = True
 _C.NAVI.FLAG_VISUALIZE_MIDDLE_TRAJ = True
 _C.NAVI.FLAG_VISUALIZE_FRONTIER_POTENTIAL = False
-_C.PRED.PARTIAL_MAP.FLAG_VISUALIZE_PRED_LABELS = False
+
 
 

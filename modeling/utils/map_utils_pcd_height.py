@@ -151,27 +151,14 @@ class SemanticMap:
 					depth_img,
 					sem_map_pose,
 					gap=2,
-					FOV=90,
-					cx=128,
-					cy=128,
-					resolution_x=256,
-					resolution_y=256,
+					FOV=79,
+					cx=320,
+					cy=240,
+					resolution_x=640,
+					resolution_y=480,
 					theta_x=0.,
 					ignored_classes=self.IGNORED_CLASS)
-			elif cfg.NAVI.HFOV == 360:
-				xyz_points, sseg_points = project_pixels_to_world_coords(
-					sseg_img,
-					depth_img,
-					sem_map_pose,
-					gap=2,
-					FOV=90,
-					cx=128,
-					cy=128,
-					resolution_x=256,
-					resolution_y=256,
-					theta_x=0.,
-					ignored_classes=self.IGNORED_CLASS)
-
+			
 			#print(f'xyz_points.shape = {xyz_points.shape}')
 			#print(f'sseg_points.shape = {sseg_points.shape}')
 
@@ -191,27 +178,6 @@ class SemanticMap:
 
 			if x_coord.shape[0] > 0:
 				self.four_dim_grid[z_coord, y_coord, x_coord, sseg_points] += 1
-
-		if cfg.SEM_MAP.FLAG_VISUALIZE_EGO_OBS and cfg.NAVI.HFOV == 360:
-			panorama_rgb = np.concatenate(rgb_lst, axis=1)
-			panorama_depth = np.concatenate(depth_lst, axis=1)
-			panorama_sseg = np.concatenate(sseg_lst, axis=1)
-
-			fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(15, 6))
-			ax[0].imshow(panorama_rgb)
-			ax[0].get_xaxis().set_visible(False)
-			ax[0].get_yaxis().set_visible(False)
-			ax[0].set_title("rgb")
-			ax[1].imshow(apply_color_to_map(panorama_sseg))
-			ax[1].get_xaxis().set_visible(False)
-			ax[1].get_yaxis().set_visible(False)
-			ax[1].set_title("sseg")
-			ax[2].imshow(panorama_depth)
-			ax[2].get_xaxis().set_visible(False)
-			ax[2].get_yaxis().set_visible(False)
-			ax[2].set_title("depth")
-			fig.tight_layout()
-			plt.show()
 
 	def get_semantic_map(self):
 		""" get the built semantic map. """

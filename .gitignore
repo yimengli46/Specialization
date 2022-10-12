@@ -6,3 +6,4 @@ data
 run/
 requirements_py36.txt
 run.sh
+model_weights/

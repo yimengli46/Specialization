@@ -1,14 +1,19 @@
-from yacs.config import CfgNode as CN
+from habitat import get_config as get_task_config
+from habitat.config import Config as CN
+
+CONFIG_FILE_SEPARATOR = ","
 
 _C = CN()
+
+_C.BASE_TASK_CONFIG_PATH = "configs/habitat_env/objectnav.yaml"
+_C.TASK_CONFIG = CN()
 
 #=============================== dataset and files =============================
 _C.GENERAL = CN()
 _C.GENERAL.SCENE_HEIGHTS_DICT_PATH = 'output/scene_height_distribution'
-_C.GENERAL.HABITAT_CONFIG_PATH = 'configs/habitat_env/exploration_see_the_floor.yaml'
 _C.GENERAL.BUILD_MAP_CONFIG_PATH = 'configs/habitat_env/build_map_mp3d.yaml'
-_C.GENERAL.LEARNED_MAP_GG_CONFIG_PATH = 'configs/habitat_env/point_nav_mp3d_for_GG.yaml'
 _C.GENERAL.DATALOADER_CONFIG_PATH = 'configs/habitat_env/dataloader.yaml'
+_C.GENERAL.OBJECTNAV_HABITAT_CONFIG_PATH = 'configs/habitat_env/objectnav.yaml'
 _C.GENERAL.HABITAT_TRAIN_EPISODE_DATA_PATH = 'data/datasets/pointnav/mp3d/temp_train/all.json.gz'
 _C.GENERAL.HABITAT_VAL_EPISODE_DATA_PATH = 'data/datasets/pointnav/mp3d/temp_val/all.json.gz'
 _C.GENERAL.HABITAT_TEST_EPISODE_DATA_PATH = 'data/datasets/pointnav/mp3d/temp_test/all.json.gz'
@@ -112,6 +117,10 @@ _C.EXPERIMENTS = CN()
 # 'large' means evaluating on 1000 episodes 
 _C.EXPERIMENTS.SIZE = 'small'
 
+#============================ IL ====================================
+_C.HABITAT_WEB = CN()
+#_C.HABITAT_WEB.
+
 #================================ for visualization ============================
 _C.SEM_MAP.FLAG_VISUALIZE_EGO_OBS = True
 _C.LN.FLAG_VISUALIZE_LOCAL_MAP = False
@@ -120,4 +129,43 @@ _C.NAVI.FLAG_VISUALIZE_MIDDLE_TRAJ = True
 _C.NAVI.FLAG_VISUALIZE_FRONTIER_POTENTIAL = False
 
 
+_C.RL = CN()
+_C.RL.REWARD_MEASURE = "distance_to_goal"
+_C.RL.SUCCESS_MEASURE = "spl"
+_C.RL.SUCCESS_REWARD = 2.5
+_C.RL.SLACK_REWARD = -0.01
 
+def get_config(config_paths, opts= None):
+	r"""Create a unified config with default values overwritten by values from
+	:ref:`config_paths` and overwritten by options from :ref:`opts`.
+
+	Args:
+		config_paths: List of config paths or string that contains comma
+		separated list of config paths.
+		opts: Config options (keys, values) in a list (e.g., passed from
+		command line into the config. For example, ``opts = ['FOO.BAR',
+		0.5]``. Argument can be used for parameter sweeping or quick tests.
+	"""
+	config = _C.clone()
+	if config_paths:
+		if isinstance(config_paths, str):
+			if CONFIG_FILE_SEPARATOR in config_paths:
+				config_paths = config_paths.split(CONFIG_FILE_SEPARATOR)
+			else:
+				config_paths = [config_paths]
+
+		for config_path in config_paths:
+			config.merge_from_file(config_path)
+
+	if opts:
+		for k, v in zip(opts[0::2], opts[1::2]):
+			if k == "BASE_TASK_CONFIG_PATH":
+				config.BASE_TASK_CONFIG_PATH = v
+
+	config.TASK_CONFIG = get_task_config(config.BASE_TASK_CONFIG_PATH)
+	if opts:
+		config.CMD_TRAILING_OPTS = config.CMD_TRAILING_OPTS + opts
+		config.merge_from_list(config.CMD_TRAILING_OPTS)
+
+	config.freeze()
+	return config

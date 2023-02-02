@@ -11,7 +11,7 @@ import math
 from math import cos, sin, acos, atan2, pi, floor, tan
 from io import StringIO
 import matplotlib.pyplot as plt
-from .constants import coco_categories_mapping, panopticSeg_mapping, d3_41_colors_rgb, COCO_74_COLORS
+from .constants import coco_categories_mapping, panopticSeg_mapping, d3_41_colors_rgb, COCO_74_COLORS, colormap
 import matplotlib as mpl
 from core import cfg
 
@@ -204,7 +204,7 @@ def convertInsSegToSSeg(InsSeg, ins2cat_dict):
 	given the mapping from instance to category ins2cat_dict.
 	"""
 	ins_id_list = list(ins2cat_dict.keys())
-	SSeg = np.zeros(InsSeg.shape, dtype=np.bool)
+	SSeg = np.zeros(InsSeg.shape, dtype=np.int16)
 	for ins_id in ins_id_list:
 		SSeg = np.where(InsSeg == ins_id, ins2cat_dict[ins_id], SSeg)
 	return SSeg
@@ -242,20 +242,26 @@ def convertPanopSegToSSeg(PanopSeg, id2cat_dict):
 
 
 # if # of classes is <= 41, flag_small_categories is True
-def apply_color_to_map(semantic_map, flag_small_categories=False):
+def apply_color_to_map(semantic_map, type_categories='MP3D'):
 	""" convert semantic map semantic_map into a colorful visualization color_semantic_map"""
 	assert len(semantic_map.shape) == 2
-	if flag_small_categories:
+	if type_categories == 'MP3D':
 		COLOR = d3_41_colors_rgb
 		num_classes = 41
-	else:
+	elif type_categories == 'COCO':
 		COLOR = COCO_74_COLORS
 		num_classes = 74
+	elif type_categories == 'LVIS':
+		COLOR = colormap(rgb=True)
+		num_classes = 300
 
 	H, W = semantic_map.shape
 	color_semantic_map = np.zeros((H, W, 3), dtype='uint8')
 	for i in range(num_classes):
-		color_semantic_map[semantic_map == i] = COLOR[i]
+		if type_categories == 'MP3D' or type_categories == 'COCO':
+			color_semantic_map[semantic_map == i] = COLOR[i]
+		else:
+			color_semantic_map[semantic_map == i] = COLOR[i % len(COLOR), 0:3]
 	return color_semantic_map
 
 

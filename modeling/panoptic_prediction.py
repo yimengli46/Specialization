@@ -3,7 +3,6 @@
 # https://github.com/facebookresearch/detectron2/blob/master/demo/predictor.py
 
 import argparse
-import time
 
 import torch
 import numpy as np
@@ -14,9 +13,6 @@ from detectron2.data.catalog import MetadataCatalog
 from detectron2.modeling import build_model
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.utils.visualizer import ColorMode, Visualizer
-import detectron2.data.transforms as T
-
-from constants import coco_categories_mapping
 
 
 class PanopPred():
@@ -122,8 +118,7 @@ def get_seg_parser():
         description="Detectron2 demo for builtin models")
     parser.add_argument(
         "--config-file",
-        default=
-        "configs/quick_schedules/mask_rcnn_R_50_FPN_inference_acc_test.yaml",
+        default="configs/quick_schedules/mask_rcnn_R_50_FPN_inference_acc_test.yaml",
         metavar="FILE",
         help="path to config file",
     )

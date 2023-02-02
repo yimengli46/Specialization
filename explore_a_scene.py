@@ -67,8 +67,10 @@ def my_tsp(G, weight="weight"):
 cfg.merge_from_file('configs/exp_specialization.yaml')
 cfg.freeze()
 
-scene_name = 'zsNo4HB9uLZ_0'
-occ_map_npy = np.load(f'{cfg.SAVE.OCCUPANCY_MAP_PATH}/val/{scene_name}/BEV_occupancy_map.npy', allow_pickle=True).item()
+env_scene = 'qk9eeNeR4vw'
+scene_name = f'{env_scene}_0'
+split = 'train' #'test' #'train'
+occ_map_npy = np.load(f'{cfg.SAVE.OCCUPANCY_MAP_PATH}/{split}/{scene_name}/BEV_occupancy_map.npy', allow_pickle=True).item()
 gt_occ_map, pose_range, coords_range, WH = read_occ_map_npy(occ_map_npy)
 
 #=========================== get the skeleton image of the whole map ==========================
@@ -96,10 +98,10 @@ print(f'finished computing TSP ...')
 #assert 1==2
 
 #=============================== get observations along the path =============================
-split = 'val' #'test' #'train'
-env_scene = 'zsNo4HB9uLZ' #'17DRP5sb8fy' #'yqstnuAEVhm'
+
+#env_scene = 'wcojb4TFT35' #'17DRP5sb8fy' #'yqstnuAEVhm'
 floor_id = 0
-scene_name = 'zsNo4HB9uLZ_0' #'17DRP5sb8fy_0' #'yqstnuAEVhm_0'
+#scene_name = 'wcojb4TFT35_0' #'17DRP5sb8fy_0' #'yqstnuAEVhm_0'
 
 scene_floor_dict = np.load(f'{cfg.GENERAL.SCENE_HEIGHTS_DICT_PATH}/{split}_scene_floor_dict.npy', allow_pickle=True).item()
 
@@ -108,8 +110,9 @@ act_dict = {-1: 'Done', 0: 'stop', 1: 'forward', 2: 'left', 3:'right'}
 #================================ load habitat env============================================
 config = habitat.get_config(config_paths=cfg.GENERAL.DATALOADER_CONFIG_PATH)
 config.defrost()
-config.SIMULATOR.SCENE = f'{cfg.GENERAL.HABITAT_SCENE_DATA_PATH}/mp3d/{env_scene}/{env_scene}.glb'
+config.SIMULATOR.SCENE = f'data/scene_datasets/hm3d/{split}/00016-qk9eeNeR4vw/{env_scene}.basis.glb'
 config.DATASET.SCENES_DIR = cfg.GENERAL.HABITAT_SCENE_DATA_PATH
+config.SIMULATOR.SCENE_DATASET = f'data/scene_datasets/hm3d/hm3d_annotated_basis.scene_dataset_config.json'
 config.freeze()
 
 env = habitat.sims.make_sim(config.SIMULATOR.TYPE, config=config.SIMULATOR)
@@ -186,7 +189,7 @@ while True:
 	semMap_module.build_semantic_map(obs_list, pose_list, step=step, saved_folder=saved_folder)
 
 	#============================ save the observations ===============================
-	if True:
+	if False:
 		assert len(obs_list) == 1
 		obs = obs_list[0]
 		rgb_img = obs['rgb']
@@ -205,6 +208,28 @@ while True:
 				eps_data,
 				fp
 			)
+		count_sample += 1
+
+	#=========== record panorama every 5 steps ============
+	if step % 20 == 0:
+		theta_lst = [0, pi/2, pi, pi*3./2]
+		agent_pos = np.array([pose[0], scene_height, pose[1]])
+		eps_data_rgb = {}
+		eps_data_sseg = {}
+		for idx_theta, theta in enumerate(theta_lst):
+			agent_rot = habitat_sim.utils.common.quat_from_angle_axis(theta, habitat_sim.geo.GRAVITY)
+			obs = env.get_observations_at(agent_pos, agent_rot, keep_agent_at_new_pose=False)
+			eps_data_rgb[idx_theta] = obs['rgb'].copy()
+			InsSeg_img = obs["semantic"]
+			sseg_img = convertInsSegToSSeg(InsSeg_img, ins2cat_dict)
+			eps_data_sseg[idx_theta] = sseg_img.copy()
+			#plt.imshow(sseg_img)
+			#plt.show()
+
+		sample_name = str(count_sample).zfill(5)
+		with bz2.BZ2File(f'{saved_folder}/{sample_name}.pbz2', 'w') as fp:
+			cPickle.dump(eps_data_rgb, fp)
+			cPickle.dump(eps_data_sseg, fp)
 		count_sample += 1
 
 	if idx_path_node == len(traverse_path):

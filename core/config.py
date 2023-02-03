@@ -134,6 +134,12 @@ _C.RL.SUCCESS_REWARD = 2.5
 _C.RL.SLACK_REWARD = -0.01
 
 
+# ================================ for slurm ==============================
+_C.SLURM = CN()
+_C.SLURM.NUM_PROCESS = 1
+_C.SLURM.PROC_PER_GPU = 1
+
+
 def get_config(config_paths, opts=None):
     r"""Create a unified config with default values overwritten by values from
     :ref:`config_paths` and overwritten by options from :ref:`opts`.

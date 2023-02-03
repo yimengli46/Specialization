@@ -106,11 +106,11 @@ for idx_scene, scene_with_index in enumerate(sem_filenames):
 
     count_floor = 0
     for idx_height, height in enumerate(peak_heights):
-        # check if within 0.2m of previous heights
+        # check if within 1.5m of previous heights
         flag = False
         for i in range(0, idx_height):
             prev_height = peak_heights[i]
-            if abs(prev_height - height) <= 0.2:
+            if abs(prev_height - height) <= 1.5:
                 flag = True
 
         if not flag:

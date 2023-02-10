@@ -34,11 +34,12 @@ _C.MAIN.NUM_SCENES = 61
 
 # ==================================== for sensor =======================
 _C.SENSOR = CN()
-_C.SENSOR.DEPTH_MIN = 0.5
-_C.SENSOR.DEPTH_MAX = 5.0
-_C.SENSOR.SENSOR_HEIGHT = 0.88
-_C.SENSOR.AGENT_HEIGHT = 0.88
-_C.SENSOR.AGENT_RADIUS = 0.18
+_C.SENSOR.DEPTH_MIN = 0.0
+_C.SENSOR.DEPTH_MAX = 10.0
+_C.SENSOR.SENSOR_HEIGHT = 1.25
+_C.SENSOR.AGENT_HEIGHT = 1.5
+_C.SENSOR.AGENT_RADIUS = 0.1
+_C.SENSOR.OBS_WIDTH = 512
 
 # ================================ for semantic map ===============================
 _C.SEM_MAP = CN()
@@ -97,17 +98,61 @@ _C.FE.UNOBSERVED_VAL = 0
 _C.FE.OBSTACLE_THRESHOLD = 1
 _C.FE.GROUP_INFLATION_RADIUS = 0
 
+# ============================== for model prediction ===================================
+_C.PRED = CN()
+
+# ========================= input view===============
+_C.PRED.VIEW = CN()
+# devide the real area by a constant
+_C.PRED.VIEW.DIVIDE_AREA = 1000
+# devide the real D by a constant
+_C.PRED.VIEW.DIVIDE_D = 10
+# number of workers for the dataloader
+_C.PRED.VIEW.NUM_WORKERS = 1
+# batch size
+_C.PRED.VIEW.BATCH_SIZE = 4
+# input size in to the model (W, H)
+_C.PRED.VIEW.INPUT_WH = (256, 256)
+# model name
+_C.PRED.VIEW.CHECKNAME = 'resnet'
+# loss function
+_C.PRED.VIEW.LOSS_TYPE = 'CE'
+# number of training epoches
+_C.PRED.VIEW.EPOCHS = 5
+# start learning rate
+_C.PRED.VIEW.LR = 0.1
+# scheduler
+_C.PRED.VIEW.LR_SCHEDULER = 'poly'
+# resume model trajectory
+_C.PRED.VIEW.RESUME = ''
+# between the number of interval we will evaluate the model on the validation set
+_C.PRED.VIEW.EVAL_INTERVAL = 2
+# name of the dataset
+_C.PRED.VIEW.DATASET = 'MP3D'
+# model weights saving folder
+_C.PRED.VIEW.SAVED_FOLDER = 'output/model_weights_RESNET_input_view'
+# input type of the model, having semantic map or not
+_C.PRED.VIEW.INPUT = 'depth_only'  # select from ['occ_and_sem', 'occ_only']
+# number of the input channels of UNet
+_C.PRED.VIEW.INPUT_CHANNEL = 1
+# number of output channels of UNet
+_C.PRED.VIEW.OUTPUT_CHANNEL = 1
+# device number
+_C.PRED.VIEW.DEVICE = 'cuda'
+# number of generated samples per scene, used for data generator
+_C.PRED.VIEW.NUM_GENERATED_SAMPLES_PER_SCENE = 1000
+# Number of processes to generate data
+_C.PRED.VIEW.NUM_PROCESS = 4
+# Use MPI4py
+_C.PRED.VIEW.multiprocessing = 'single'  # 'single', 'mp', 'mpi4py'
+# folder to save the generated data
+_C.PRED.VIEW.GEN_SAMPLES_SAVED_FOLDER = 'output/training_data_input_view_1000samples'
+# visualize the frontier and the map
+_C.PRED.VIEW.FLAG_VIS_FRONTIER_ON_MAP = False
 
 # =============================== for Evaluation =====================================
 _C.EVAL = CN()
 _C.EVAL.USE_ALL_START_POINTS = False
-
-# =========================== multiprocessing =======================
-_C.MP = CN()
-# num of gpus to use for running the test
-_C.MP.GPU_CAPACITY = 1
-# number of processes running on a GPU
-_C.MP.PROC_PER_GPU = 1
 
 # ========================== experiments =============================
 _C.EXPERIMENTS = CN()

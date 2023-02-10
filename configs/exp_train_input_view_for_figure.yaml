@@ -1,18 +1,13 @@
-MAIN:
-  SPLIT: 'train'
-
 NAVI:
   NUM_STEPS: 500
   GT_OCC_MAP_TYPE: 'NAV_MESH'
   HFOV: 360
   PERCEPTION: Potential
   STRATEGY: FME
-  D_type: 'Skeleton'
-  FLAG_VISUALIZE_MIDDLE_TRAJ: True
+  FLAG_VISUALIZE_MIDDLE_TRAJ: False
   NUM_STEPS_EXPLORE: 1
 
 PRED:
-  TYPE: 'VIEW'
   VIEW:
     BATCH_SIZE: 3
     CHECKNAME: resnet
@@ -26,15 +21,16 @@ PRED:
     OUTPUT_CHANNEL: 4
     INPUT_WH: (256, 256)
     LOSS_TYPE: L1
-    NUM_GENERATED_SAMPLES_PER_SCENE: 1000
+    NUM_GENERATED_SAMPLES_PER_SCENE: 23
     NUM_WORKERS: 2
     RESUME: ''
     SAVED_FOLDER: 'output/model_weights_RESNET_input_view'
-    STEP_GAP: 5
     LR: 1e-3
     NUM_PROCESS: 8
     multiprocessing: 'mp'
     GEN_SAMPLES_SAVED_FOLDER: 'output/training_data_input_view_1000samples'
+    EPS_SAVE_GAP: 20
+    FLAG_VIS_FRONTIER_ON_MAP: False
 
 
 SAVE:
@@ -44,3 +40,6 @@ SEM_MAP:
   CELL_SIZE: 0.05
   GRID_CLASS_SIZE: 250
   FLAG_VISUALIZE_EGO_OBS: False
+
+SENSOR:
+  OBS_WIDTH: 512

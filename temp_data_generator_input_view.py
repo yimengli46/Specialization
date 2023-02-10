@@ -15,16 +15,20 @@ from modeling.localNavigator_slam import localNav_slam
 import math
 import bz2
 import _pickle as cPickle
+import argparse
+import multiprocessing
+import json
 
 
-def build_env(env_scene, device_id=0):
+def build_env(split, scene_with_index, device_id=0):
     # ================================ load habitat env============================================
+    print(f'scene_with_index = {scene_with_index}')
     config = habitat.get_config(
-        config_paths=cfg.GENERAL.DATALOADER_CONFIG_PATH)
+        config_paths=cfg.GENERAL.BUILD_MAP_CONFIG_PATH)
     config.defrost()
-    config.SIMULATOR.SCENE = f'data/scene_datasets/hm3d/val/00800-TEEsavR23oF/TEEsavR23oF.basis.glb'
-    #config.DATASET.SCENES_DIR = cfg.GENERAL.HABITAT_SCENE_DATA_PATH
-    config.SIMULATOR.SCENE_DATASET = f'data/scene_datasets/hm3d/hm3d_annotated_basis.scene_dataset_config.json'
+    config.SIMULATOR.SCENE = f'data/scene_datasets/hm3d/{split}/{scene_with_index}/{scene_with_index[6:]}.glb'
+    config.SIMULATOR.SCENE_DATASET = 'data/scene_datasets/hm3d/hm3d_annotated_basis.scene_dataset_config.json'
+    config.SIMULATOR.HABITAT_SIM_V0.GPU_DEVICE_ID = device_id
     config.freeze()
     env = habitat.sims.make_sim(config.SIMULATOR.TYPE, config=config.SIMULATOR)
     return env
@@ -32,13 +36,14 @@ def build_env(env_scene, device_id=0):
 
 class Data_Gen_View:
 
-    def __init__(self, split, scene_name, saved_dir=''):
+    def __init__(self, split, scene_floor_tuple, saved_dir=''):
         self.split = split
-        self.scene_name = scene_name
+        self.scene_with_index, self.floor_id, self.height = scene_floor_tuple
         self.random = Random(cfg.GENERAL.RANDOM_SEED)
+        self.scene_name = f'{self.scene_with_index}_{self.floor_id}'
 
         # ============= create scene folder =============
-        scene_folder = f'{saved_dir}/{scene_name}'
+        scene_folder = f'{saved_dir}/{self.scene_with_index}_{self.floor_id}'
         if not os.path.exists(scene_folder):
             os.mkdir(scene_folder)
         self.scene_folder = scene_folder
@@ -46,18 +51,15 @@ class Data_Gen_View:
         self.init_scene()
 
     def init_scene(self):
-        scene_name = self.scene_name
-        print(f'init new scene: {scene_name}')
-        env_scene = scene_name[:-2]
+        print(f'init new scene: {self.scene_name}')
 
-        # ============================= initialize habitat env===================================
-        self.scene_floor_dict = np.load(
-            f'output/scene_height_distribution/{self.split}_scene_floor_dict.npy',
-            allow_pickle=True).item()
-        self.height = self.scene_floor_dict[env_scene][0]['y']
-
+        if cfg.PRED.VIEW.multiprocessing == 'single':
+            self.device_id = 0
+        elif cfg.PRED.VIEW.multiprocessing == 'mp':
+            self.device_id = gpu_Q.get()
         # ================================ load habitat env============================================
-        self.env = build_env(env_scene)
+        self.env = build_env(
+            self.split, self.scene_with_index, device_id=self.device_id)
         self.env.reset()
 
         scene = self.env.semantic_annotations()
@@ -68,19 +70,9 @@ class Data_Gen_View:
 
         # ================================= read in pre-built occupancy and semantic map =============================
         occ_map_npy = np.load(
-            f'output/semantic_map/{self.split}/00800-TEEsavR23oF_0/BEV_occupancy_map.npy', allow_pickle=True).item()
+            f'output/semantic_map/{self.split}/{self.scene_name}/BEV_occupancy_map.npy', allow_pickle=True).item()
         gt_occ_map, self.pose_range, self.coords_range, self.WH = read_occ_map_npy(
             occ_map_npy)
-
-        plt.imshow(gt_occ_map)
-        plt.show()
-
-        '''
-		if cfg.NAVI.D_type == 'Skeleton':
-			self.skeleton = skeletonize(gt_occ_map)
-			if cfg.NAVI.PRUNE_SKELETON:
-				self.skeleton = fr_utils.prune_skeleton(gt_occ_map, self.skeleton)
-		'''
 
         # initialize path planner
         self.LN = localNav_Astar(
@@ -104,15 +96,12 @@ class Data_Gen_View:
 
     def write_to_file(self, num_samples=100):
         count_sample = 0
-        # =========================== process each episode
-        # for idx_epi in range(num_samples):
         while True:
-            #print(f'idx_epi = {idx_epi}')
 
             # ====================================== generate (start, goal) locs, compute path P==========================
             start_loc = self.random.choices(self.largest_cc, k=1)[0]
             start_loc = (start_loc[1], start_loc[0])
-            #start_loc = (110, 270)
+
             print(f'===============> start_loc = {start_loc}')
 
             semMap_module = SemanticMap(self.split, self.scene_name, self.pose_range, self.coords_range, self.WH,
@@ -155,7 +144,6 @@ class Data_Gen_View:
             subgoal_pose = None
             MODE_FIND_SUBGOAL = True
             explore_steps = 0
-            MODE_FIND_GOAL = False
             visited_frontier = set()
             chosen_frontier = None
             old_frontiers = None
@@ -173,10 +161,8 @@ class Data_Gen_View:
                 traverse_lst.append(agent_map_pose)
 
                 # add the observed area
-                semMap_module.build_semantic_map(obs_list,
-                                                 pose_list,
-                                                 step=step,
-                                                 saved_folder='')
+                semMap_module.build_semantic_map(
+                    obs_list, pose_list, step=step, saved_folder='')
 
                 if MODE_FIND_SUBGOAL:
                     observed_occupancy_map, gt_occupancy_map, observed_area_flag, built_semantic_map = semMap_module.get_observed_occupancy_map(agent_map_pose
@@ -191,9 +177,8 @@ class Data_Gen_View:
                     frontiers, dist_occupancy_map = self.LN.filter_unreachable_frontiers(
                         frontiers, agent_map_pose, observed_occupancy_map)
 
-                    # if cfg.NAVI.PERCEPTION == 'View_Potential':
-                    # find connections between frontiers and panorama
-                    # ====================== get the panorama image ===============
+                    # =======================================find connections between frontiers and panorama
+                    # get the panorama image
                     rgb_lst, depth_lst, sseg_lst = [], [], []
                     for i_obs in [2, 3, 0, 1, 2, 3]:
                         obs = obs_list[i_obs]
@@ -202,6 +187,8 @@ class Data_Gen_View:
                         depth_img = obs['depth'][:, :, 0]
                         #print(f'depth_img.shape = {depth_img.shape}')
                         InsSeg_img = obs["semantic"]
+                        if len(InsSeg_img.shape) > 2:
+                            InsSeg_img = np.squeeze(InsSeg_img)
                         sseg_img = convertInsSegToSSeg(
                             InsSeg_img, self.ins2cat_dict)
                         rgb_lst.append(rgb_img)
@@ -210,27 +197,9 @@ class Data_Gen_View:
                     panorama_rgb = np.concatenate(rgb_lst, axis=1)
                     panorama_depth = np.concatenate(depth_lst, axis=1)
                     panorama_sseg = np.concatenate(sseg_lst, axis=1)
-                    print(f'panorama_depth.shape = {panorama_depth.shape}')
+                    #print(f'panorama_depth.shape = {panorama_depth.shape}')
 
-                    if True:
-                        fig, ax = plt.subplots(
-                            nrows=3, ncols=1, figsize=(15, 6))
-                        ax[0].imshow(panorama_rgb)
-                        ax[0].get_xaxis().set_visible(False)
-                        ax[0].get_yaxis().set_visible(False)
-                        ax[0].set_title("rgb")
-                        ax[1].imshow(panorama_rgb)
-                        ax[1].get_xaxis().set_visible(False)
-                        ax[1].get_yaxis().set_visible(False)
-                        ax[1].set_title("sseg")
-                        ax[2].imshow(panorama_depth)
-                        ax[2].get_xaxis().set_visible(False)
-                        ax[2].get_yaxis().set_visible(False)
-                        ax[2].set_title("depth")
-                        fig.tight_layout()
-                        plt.show()
-
-                    # ========================= compute the angle between frontier and agent
+                    # compute the angle between frontier and agent and get the observation
                     for fron in frontiers:
                         fron_centroid_coords = (
                             int(fron.centroid[1]), int(fron.centroid[0]))
@@ -249,71 +218,148 @@ class Data_Gen_View:
                             deg += 360
                         assert deg >= 45
                         #print(f'final deg = {deg}')
-                        bin_from_deg = int(256 / 90 * deg)
+                        bin_from_deg = int(cfg.SENSOR.OBS_WIDTH / 90 * deg)
 
+                        OBS_HALF_WIDTH = int(cfg.SENSOR.OBS_WIDTH / 2)
                         fron_rgb = panorama_rgb[:,
-                                                bin_from_deg-128:bin_from_deg+128]
+                                                bin_from_deg - OBS_HALF_WIDTH: bin_from_deg + OBS_HALF_WIDTH]
                         fron_depth = panorama_depth[:,
-                                                    bin_from_deg-128:bin_from_deg+128]
+                                                    bin_from_deg - OBS_HALF_WIDTH: bin_from_deg + OBS_HALF_WIDTH]
                         fron_sseg = panorama_sseg[:,
-                                                  bin_from_deg-128:bin_from_deg+128]
+                                                  bin_from_deg - OBS_HALF_WIDTH: bin_from_deg + OBS_HALF_WIDTH]
 
                         fron.rgb_obs = fron_rgb
                         fron.depth_obs = fron_depth
                         fron.sseg_obs = fron_sseg
 
-                        if True:
-                            #color_fron_sseg = apply_color_to_map(fron_sseg, True)
-                            fig, ax = plt.subplots(nrows=1,
-                                                   ncols=3,
-                                                   figsize=(20, 5))
-                            '''
-							ax[0].imshow(observed_occupancy_map, cmap='gray')
-							for f in frontiers:
-								ax[0].scatter(f.points[1], f.points[0], c='yellow', zorder=2)
-								ax[0].scatter(f.centroid[1], f.centroid[0], c='red', zorder=2)
-							
-							ax[0].scatter(fron.points[1],
-									   fron.points[0],
-									   c='green',
-									   zorder=4)
-							ax[0].scatter(fron.centroid[1],
-									   fron.centroid[0],
-									   c='red',
-									   zorder=4)
-							ax[0].get_xaxis().set_visible(False)
-							ax[0].get_yaxis().set_visible(False)
-							ax[0].set_title('explored occupancy map')
-							'''
-
-                            ax[0].imshow(fron_rgb)
-                            ax[0].get_xaxis().set_visible(False)
-                            ax[0].get_yaxis().set_visible(False)
-                            ax[0].set_title('rgb')
-
-                            ax[1].imshow(fron_depth, vmin=0.0, vmax=10.0)
-                            ax[1].get_xaxis().set_visible(False)
-                            ax[1].get_yaxis().set_visible(False)
-                            ax[1].set_title('depth')
-
-                            ax[2].imshow(fron_sseg)
-                            ax[2].get_xaxis().set_visible(False)
-                            ax[2].get_yaxis().set_visible(False)
-                            ax[2].set_title('semantic segmentation')
-
-                            fig.tight_layout()
-                            plt.title(f'frontier egocentric view')
-                            plt.show()
-
-                    # =========================== visualization ==============================
+                    # ======================== Update the frontiers' observations ==========================
+                    # For some old frontiers, we have to use the old observation
+                    if old_frontiers is not None:
+                        frontiers, _ = fr_utils.update_frontier_set_data_gen(
+                            old_frontiers, frontiers, max_dist=5, chosen_frontier=chosen_frontier)
 
                     chosen_frontier = fr_utils.get_the_nearest_frontier(
                         frontiers, agent_map_pose, dist_occupancy_map, self.LN)
 
+                    # =========================== visualize all the frontier obs and panor ====================
+                    if step % cfg.PRED.VIEW.EPS_SAVE_GAP == 0:
+                        if cfg.PRED.VIEW.FLAG_VIS_FRONTIER_ON_MAP:
+                            x_coord_lst, z_coord_lst, theta_lst = [], [], []
+                            for cur_pose in traverse_lst:
+                                x_coord, z_coord = pose_to_coords(
+                                    (cur_pose[0], cur_pose[1]
+                                     ), self.pose_range, self.coords_range,
+                                    self.WH)
+                                x_coord_lst.append(x_coord)
+                                z_coord_lst.append(z_coord)
+                                theta_lst.append(cur_pose[2])
+                            for fron in frontiers:
+                                fig = plt.figure(figsize=(20, 20))
+                                gs = fig.add_gridspec(3, 3)
+                                # visualize the map
+                                ax1 = fig.add_subplot(gs[0, :])
+                                ax1.imshow(observed_occupancy_map, cmap='gray')
+                                for f in frontiers:
+                                    ax1.scatter(
+                                        f.points[1], f.points[0], c='green', zorder=2)
+                                    ax1.scatter(
+                                        f.centroid[1], f.centroid[0], c='red', zorder=2)
+                                marker, scale = gen_arrow_head_marker(
+                                    theta_lst[-1])
+                                ax1.scatter(x_coord_lst[-1],
+                                            z_coord_lst[-1],
+                                            marker=marker,
+                                            s=(30 * scale)**2,
+                                            c='red',
+                                            zorder=5)
+                                ax1.scatter(x_coord_lst[0],
+                                            z_coord_lst[0],
+                                            marker='s',
+                                            s=50,
+                                            c='red',
+                                            zorder=5)
+                                #ax.plot(x_coord_lst, z_coord_lst, lw=5, c='blue', zorder=3)
+                                ax1.scatter(x_coord_lst,
+                                            z_coord_lst,
+                                            c='blue',
+                                            zorder=3)
+                                # visualize the frontier on the map
+                                ax1.scatter(fron.points[1],
+                                            fron.points[0],
+                                            c='yellow',
+                                            zorder=4)
+                                ax1.scatter(fron.centroid[1],
+                                            fron.centroid[0],
+                                            c='red',
+                                            zorder=4)
+                                ax1.get_xaxis().set_visible(False)
+                                ax1.get_yaxis().set_visible(False)
+                                ax1.set_title('explored occupancy map')
+
+                                # visualize the panorama
+                                ax2 = fig.add_subplot(gs[1, :])
+                                ax2.imshow(panorama_rgb)
+                                ax2.get_xaxis().set_visible(False)
+                                ax2.get_yaxis().set_visible(False)
+                                ax2.set_title("panorama")
+
+                                # visualize the frontier observation
+                                ax3 = fig.add_subplot(gs[2, 0])
+                                ax3.imshow(fron.rgb_obs)
+                                ax3.get_xaxis().set_visible(False)
+                                ax3.get_yaxis().set_visible(False)
+                                ax3.set_title('rgb')
+
+                                ax4 = fig.add_subplot(gs[2, 1])
+                                ax4.imshow(fron.depth_obs, vmin=0.0, vmax=5.0)
+                                ax4.get_xaxis().set_visible(False)
+                                ax4.get_yaxis().set_visible(False)
+                                ax4.set_title('depth')
+
+                                ax5 = fig.add_subplot(gs[2, 2])
+                                ax5.imshow(apply_color_to_map(
+                                    fron.sseg_obs, "LVIS"))
+                                ax5.get_xaxis().set_visible(False)
+                                ax5.get_yaxis().set_visible(False)
+                                ax5.set_title('semantic segmentation')
+
+                                fig.tight_layout()
+                                #plt.title(f'frontier egocentric view')
+                                plt.show()
+
+                    # ============================ save the added frontiers set images =====================
+                    if step % cfg.PRED.VIEW.EPS_SAVE_GAP == 0:
+                        eps_data = {}
+                        eps_data['frontiers'] = []
+                        for fron in frontiers:
+                            fron_data = {}
+                            fron_data['rgb'] = fron.rgb_obs.copy()
+                            fron_data['depth'] = fron.depth_obs.copy()
+                            fron_data['sseg'] = fron.sseg_obs.copy()
+                            fron_data['centroid'] = fron.centroid
+                            eps_data['frontiers'] = fron_data
+
+                        eps_data['sseg_map'] = built_semantic_map
+                        eps_data['occ_map'] = observed_occupancy_map
+
+                        # '''
+                        sample_name = str(count_sample).zfill(
+                            len(str(num_samples)))
+                        with bz2.BZ2File(f'{self.scene_folder}/{sample_name}.pbz2', 'w') as fp:
+                            cPickle.dump(
+                                eps_data,
+                                fp
+                            )
+                        # '''
+
+                        count_sample += 1
+                        if count_sample == num_samples:
+                            return
+
                     # ============================================= visualize semantic map ===========================================#
                     if cfg.NAVI.FLAG_VISUALIZE_MIDDLE_TRAJ:
                         color_built_semantic_map = apply_color_to_map(
-                            built_semantic_map, True)
+                            built_semantic_map, 'LVIS')
                         # =================================== visualize the agent pose as red nodes =======================
                         x_coord_lst, z_coord_lst, theta_lst = [], [], []
                         for cur_pose in traverse_lst:
@@ -421,7 +467,89 @@ class Data_Gen_View:
                     MODE_FIND_SUBGOAL = True
 
 
-# '''
+def multi_run_wrapper(args):
+    """ wrapper for multiprocessor """
+    gen = Data_Gen_View(args[0], args[1], saved_dir=args[2])
+    gen.write_to_file(
+        num_samples=cfg.PRED.VIEW.NUM_GENERATED_SAMPLES_PER_SCENE)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--j', type=int, required=False, default=1)
+    parser.add_argument('--split', type=str, required=True, default='val')
+    args = parser.parse_args()
+    cfg.merge_from_file('configs/exp_train_input_view_for_figure.yaml')
+    cfg.freeze()
+
+    # =============================== basic setup =======================================
+    SEED = cfg.GENERAL.RANDOM_SEED
+    random.seed(SEED)
+    np.random.seed(SEED)
+
+    split = args.split
+    scene_floor_dict = np.load(
+        f'{cfg.GENERAL.SCENE_HEIGHTS_DICT_PATH}/{split}_scene_floor_dict.npy',
+        allow_pickle=True).item()
+
+    output_folder = cfg.PRED.VIEW.GEN_SAMPLES_SAVED_FOLDER
+    if not os.path.exists(output_folder):
+        os.mkdir(output_folder)
+
+    split_folder = f'{output_folder}/{split}'
+    if not os.path.exists(split_folder):
+        os.mkdir(split_folder)
+
+    # =================================analyze json file to get the semantic files =============================
+    list_scene_floor_tuple = []
+    with open('data/versioned_data/hm3d-1.0/hm3d/hm3d_annotated_basis.scene_dataset_config.json') as f:
+        data = json.loads(f.read())
+        if split == 'val':
+            list_json_dirs = data['scene_instances']['paths']['.json'][103:]
+        elif split == 'train':
+            list_json_dirs = data['scene_instances']['paths']['.json'][23:103]
+
+        for json_dir in list_json_dirs:
+            first_slash = json_dir.find('/')
+            second_slash = json_dir.find('/', first_slash + 1)
+
+            sem_filename = json_dir[first_slash + 1:second_slash]
+
+            scene_dict = scene_floor_dict[sem_filename]
+            for floor_id in list(scene_dict.keys()):
+                height = scene_dict[floor_id]['y']
+                list_scene_floor_tuple.append((sem_filename, floor_id, height))
+
+    if cfg.PRED.VIEW.multiprocessing == 'single':  # single process
+        for scene_floor_tuple in list_scene_floor_tuple:
+            gen = Data_Gen_View(split, scene_floor_tuple,
+                                saved_dir=split_folder)
+            gen.write_to_file(
+                num_samples=cfg.PRED.VIEW.NUM_GENERATED_SAMPLES_PER_SCENE)
+    elif cfg.PRED.VIEW.multiprocessing == 'mp':
+        # ====================== get the available GPU devices ============================
+        visible_devices = os.environ["CUDA_VISIBLE_DEVICES"].split(",")
+        devices = [int(dev) for dev in visible_devices]
+
+        for device_id in devices:
+            for _ in range(args.j):
+                gpu_Q.put(device_id)
+
+        with multiprocessing.Pool(processes=cfg.PRED.VIEW.NUM_PROCESS) as pool:
+            args0 = [split for _ in range(len(list_scene_floor_tuple))]
+            args1 = [
+                scene_floor_tuple for scene_floor_tuple in list_scene_floor_tuple]
+            args2 = [split_folder for _ in range(len(list_scene_floor_tuple))]
+            pool.map(multi_run_wrapper, list(zip(args0, args1, args2)))
+            pool.close()
+
+
+if __name__ == "__main__":
+    gpu_Q = multiprocessing.Queue()
+    main()
+
+
+'''
 cfg.merge_from_file('configs/exp_train_input_view_for_figure.yaml')
 cfg.freeze()
 
@@ -443,4 +571,4 @@ if not os.path.exists(split_folder):
 data = Data_Gen_View(split=split, scene_name=scene_name,
                      saved_dir=split_folder)
 data.write_to_file(num_samples=cfg.PRED.VIEW.NUM_GENERATED_SAMPLES_PER_SCENE)
-# '''
+'''

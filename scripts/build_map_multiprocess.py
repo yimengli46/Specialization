@@ -41,7 +41,7 @@ def build_floor(split, scene_with_index, output_folder, scene_floor_dict):
         scene_output_folder = f'{output_folder}/{scene_name}'
         create_folder(scene_output_folder)
 
-        #build_sem_map(env, scene_output_folder, height)
+        build_sem_map(env, scene_output_folder, height)
         build_occ_map(env, scene_output_folder, height, scene_name, split)
 
     env.close()

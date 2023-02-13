@@ -27,7 +27,7 @@ PRED:
     SAVED_FOLDER: 'output/model_weights_RESNET_input_view'
     LR: 1e-3
     NUM_PROCESS: 8
-    multiprocessing: 'mp'
+    multiprocessing: 'single'
     GEN_SAMPLES_SAVED_FOLDER: 'output/training_data_input_view_1000samples'
     EPS_SAVE_GAP: 20
     FLAG_VIS_FRONTIER_ON_MAP: False

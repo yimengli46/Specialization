@@ -120,7 +120,8 @@ class Data_Gen_View:
             # check if the start point is navigable
             if not self.env.is_navigable(agent_pos):
                 print(f'start pose is not navigable ...')
-                assert 1 == 2
+                #assert 1 == 2
+                continue
 
             if cfg.NAVI.HFOV == 90:
                 obs_list, pose_list = [], []
@@ -353,6 +354,7 @@ class Data_Gen_View:
 
                         count_sample += 1
                         if count_sample == num_samples:
+                            self.env.close()
                             return
 
                     # ============================================= visualize semantic map ===========================================#
@@ -514,12 +516,12 @@ def main():
 
             sem_filename = json_dir[first_slash + 1:second_slash]
 
-            if sem_filename == '00009-vLpv2VX547B':
-                scene_dict = scene_floor_dict[sem_filename]
-                for floor_id in list(scene_dict.keys()):
-                    height = scene_dict[floor_id]['y']
-                    list_scene_floor_tuple.append(
-                        (sem_filename, floor_id, height))
+            # if sem_filename == '00009-vLpv2VX547B':
+            scene_dict = scene_floor_dict[sem_filename]
+            for floor_id in list(scene_dict.keys()):
+                height = scene_dict[floor_id]['y']
+                list_scene_floor_tuple.append(
+                    (sem_filename, floor_id, height))
 
     if cfg.PRED.VIEW.multiprocessing == 'single':  # single process
         for scene_floor_tuple in list_scene_floor_tuple:

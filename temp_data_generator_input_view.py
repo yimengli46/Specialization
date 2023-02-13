@@ -242,7 +242,7 @@ class Data_Gen_View:
                         frontiers, agent_map_pose, dist_occupancy_map, self.LN)
 
                     # =========================== visualize all the frontier obs and panor ====================
-                    if step % cfg.PRED.VIEW.EPS_SAVE_GAP == 0:
+                    if self.random.random() < 1./cfg.PRED.VIEW.EPS_SAVE_GAP:
                         if cfg.PRED.VIEW.FLAG_VIS_FRONTIER_ON_MAP:
                             x_coord_lst, z_coord_lst, theta_lst = [], [], []
                             for cur_pose in traverse_lst:
@@ -327,8 +327,7 @@ class Data_Gen_View:
                                 #plt.title(f'frontier egocentric view')
                                 plt.show()
 
-                    # ============================ save the added frontiers set images =====================
-                    if step % cfg.PRED.VIEW.EPS_SAVE_GAP == 0:
+                        # ============================ save the added frontiers set images =====================
                         eps_data = {}
                         eps_data['frontiers'] = []
                         for fron in frontiers:
@@ -515,10 +514,12 @@ def main():
 
             sem_filename = json_dir[first_slash + 1:second_slash]
 
-            scene_dict = scene_floor_dict[sem_filename]
-            for floor_id in list(scene_dict.keys()):
-                height = scene_dict[floor_id]['y']
-                list_scene_floor_tuple.append((sem_filename, floor_id, height))
+            if sem_filename == '00009-vLpv2VX547B':
+                scene_dict = scene_floor_dict[sem_filename]
+                for floor_id in list(scene_dict.keys()):
+                    height = scene_dict[floor_id]['y']
+                    list_scene_floor_tuple.append(
+                        (sem_filename, floor_id, height))
 
     if cfg.PRED.VIEW.multiprocessing == 'single':  # single process
         for scene_floor_tuple in list_scene_floor_tuple:

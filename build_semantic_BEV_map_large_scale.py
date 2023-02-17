@@ -25,6 +25,11 @@ def build_sem_map(env, saved_folder, height):
     ins2cat_dict = {
         int(obj.id.split("_")[-1]): obj.category.index() for obj in scene.objects}
 
+    category_id_to_name_dict = {obj.category.index(
+    ): obj.category.name() for obj in scene.objects}
+    np.save(f'{saved_folder}/category_id_to_name_dict.npy',
+            category_id_to_name_dict)
+
     # ================================ Building a map ===============================
     SemMap = SemanticMap(saved_folder)
 

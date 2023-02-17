@@ -5,20 +5,15 @@ import gzip
 import json
 import quaternion as qt
 from sklearn.mixture import GaussianMixture
+from scipy import stats as st
 
-split = 'val'  # 'val', 'train'
+split = 'train'  # 'val', 'train'
 saved_folder = 'output/scene_height_distribution'
 
 scene_start_y_dict = {}
 scene_height_dict = {}
 
 pointnav_foldername = f'data/datasets/pointnav_hm3d_v1/{split}/content'
-'''
-point_filenames = ['vLpv2VX547B', 'qk9eeNeR4vw', 'oEPjPNSPmzL', 'gmuS7Wgsbrx', 'ixTj1aTMup2'] 
-#['TEEsavR23oF', 'HaxA7YrQdEC', 'wcojb4TFT35', 'k1cupFYWXJ6', 'BHXhpBwSMLh']
-sem_filenames = ['00800-TEEsavR23oF', '00801-HaxA7YrQdEC', '00802-wcojb4TFT35', '00803-k1cupFYWXJ6', 
-    '00804-BHXhpBwSMLh']
-'''
 
 
 def confirm_nComponents(X, top=1):
@@ -98,8 +93,20 @@ for idx_scene, scene_with_index in enumerate(sem_filenames):
 
     gm = GaussianMixture(n_components=num_floors).fit(
         np.array(height_lst).reshape(-1, 1))
+    labels = gm.predict(np.array(height_lst).reshape(-1, 1))
     sorted_weight_idx = np.argsort(np.array(gm.weights_))[::-1]
-    peak_heights = gm.means_[sorted_weight_idx]
+    # compute the mode as the peak_heights instead of the mean
+    #peak_heights = gm.means_[sorted_weight_idx]
+    peak_heights = []
+    for weight_idx in sorted_weight_idx:
+        heights_in_this_component = np.array(height_lst)[labels == weight_idx]
+        mode_heights = st.mode(heights_in_this_component)
+        if mode_heights[0].shape[0] > 1:
+            mode_height = list(mode_heights[0])[0]
+        else:
+            mode_height = mode_heights[0].item()
+        print(f'mode_heights = {mode_heights}, mode_height = {mode_height}')
+        peak_heights.append(mode_height)
 
     # ================================ summarize the y values of each scene =========================
     scene_floor_dict[scene_with_index] = {}
@@ -115,7 +122,7 @@ for idx_scene, scene_with_index in enumerate(sem_filenames):
 
         if not flag:
             scene_floor_dict[scene_with_index][count_floor] = {}
-            scene_floor_dict[scene_with_index][count_floor]['y'] = height.item()
+            scene_floor_dict[scene_with_index][count_floor]['y'] = height
             count_floor += 1
 
     print(f'{scene_floor_dict[scene_with_index]}')
@@ -124,7 +131,7 @@ for idx_scene, scene_with_index in enumerate(sem_filenames):
 
 
 # ===============================assign episodes to each floor =============================
-gap_thresh = 0.2
+gap_thresh = 0.01
 for scene_with_index in sem_filenames:
     print(f'filename is {scene_with_index}.')
     with gzip.open(f'{pointnav_foldername}/{scene_with_index[6:]}.json.gz', 'rb') as f:
@@ -154,14 +161,29 @@ for scene_with_index in sem_filenames:
 
                     pose = (x, start_pose_y, z, phi)
 
-                    if 'start_pose' in scene_floor_dict[scene_with_index][idx_floor]:
-                        scene_floor_dict[scene_with_index][idx_floor]['start_pose'].append(
-                            pose)
+                    goal_position = episode['goals'][0]['position']
+
+                    geodesic_distance = episode['info']['geodesic_distance']
+
+                    start_goal_pair = (
+                        pose, (goal_position[0], goal_position[2]), geodesic_distance)
+
+                    if 'start_goal_pair' in scene_floor_dict[scene_with_index][idx_floor]:
+                        scene_floor_dict[scene_with_index][idx_floor]['start_goal_pair'].append(
+                            start_goal_pair)
                     else:
-                        scene_floor_dict[scene_with_index][idx_floor]['start_pose'] = [
-                            pose]
+                        scene_floor_dict[scene_with_index][idx_floor]['start_goal_pair'] = [
+                            start_goal_pair]
 
                     break
-# '''
+
+    for idx_floor in list(scene_floor_dict[scene_with_index].keys()):
+        assert len(scene_floor_dict[scene_with_index]
+                   [idx_floor]['start_goal_pair']) > 0
+        # save the first 100 start_goal_pair in case the file is too large
+        start_goal_pairs = scene_floor_dict[scene_with_index][idx_floor]['start_goal_pair']
+        if len(start_goal_pairs) > 100:
+            scene_floor_dict[scene_with_index][idx_floor]['start_goal_pair'] = start_goal_pairs[0:100]
+
 
 np.save(f'{saved_folder}/{split}_scene_floor_dict.npy', scene_floor_dict)

@@ -161,10 +161,10 @@ class SemanticMap:
                     sem_map_pose,
                     gap=2,
                     FOV=90,
-                    cx=256,
-                    cy=256,
-                    resolution_x=512,
-                    resolution_y=512,
+                    cx=cfg.SENSOR.OBS_WIDTH/2,
+                    cy=cfg.SENSOR.OBS_WIDTH/2,
+                    resolution_x=cfg.SENSOR.OBS_WIDTH,
+                    resolution_y=cfg.SENSOR.OBS_WIDTH,
                     theta_x=0.,
                     ignored_classes=self.IGNORED_CLASS)
             elif cfg.NAVI.HFOV == 360:
@@ -174,10 +174,10 @@ class SemanticMap:
                     sem_map_pose,
                     gap=2,
                     FOV=90,
-                    cx=128,
-                    cy=128,
-                    resolution_x=256,
-                    resolution_y=256,
+                    cx=cfg.SENSOR.OBS_WIDTH/2,
+                    cy=cfg.SENSOR.OBS_WIDTH/2,
+                    resolution_x=cfg.SENSOR.OBS_WIDTH,
+                    resolution_y=cfg.SENSOR.OBS_WIDTH,
                     theta_x=0.,
                     ignored_classes=self.IGNORED_CLASS)
 

@@ -24,7 +24,7 @@ def build_env(split, scene_with_index, device_id=0):
     # ================================ load habitat env============================================
     print(f'scene_with_index = {scene_with_index}')
     config = habitat.get_config(
-        config_paths=cfg.GENERAL.BUILD_MAP_CONFIG_PATH)
+        config_paths=cfg.GENERAL.DATALOADER_CONFIG_PATH)
     config.defrost()
     config.SIMULATOR.SCENE = f'data/scene_datasets/hm3d/{split}/{scene_with_index}/{scene_with_index[6:]}.glb'
     config.SIMULATOR.SCENE_DATASET = 'data/scene_datasets/hm3d/hm3d_annotated_basis.scene_dataset_config.json'
@@ -233,6 +233,8 @@ class Data_Gen_View:
                         fron.depth_obs = fron_depth
                         fron.sseg_obs = fron_sseg
 
+                        assert np.std(fron.rgb_obs) > 0
+
                     # ======================== Update the frontiers' observations ==========================
                     # For some old frontiers, we have to use the old observation
                     if old_frontiers is not None:
@@ -244,6 +246,7 @@ class Data_Gen_View:
 
                     # =========================== visualize all the frontier obs and panor ====================
                     if self.random.random() < 1./cfg.PRED.VIEW.EPS_SAVE_GAP:
+                        # if step % cfg.PRED.VIEW.EPS_SAVE_GAP == 0:
                         if cfg.PRED.VIEW.FLAG_VIS_FRONTIER_ON_MAP:
                             x_coord_lst, z_coord_lst, theta_lst = [], [], []
                             for cur_pose in traverse_lst:
@@ -337,7 +340,8 @@ class Data_Gen_View:
                             fron_data['depth'] = fron.depth_obs.copy()
                             fron_data['sseg'] = fron.sseg_obs.copy()
                             fron_data['centroid'] = fron.centroid
-                            eps_data['frontiers'] = fron_data
+                            fron_data['points'] = fron.points
+                            eps_data['frontiers'].append(fron_data)
 
                         eps_data['sseg_map'] = built_semantic_map
                         eps_data['occ_map'] = observed_occupancy_map
@@ -480,7 +484,7 @@ def main():
     parser.add_argument('--j', type=int, required=False, default=1)
     parser.add_argument('--split', type=str, required=True, default='val')
     args = parser.parse_args()
-    cfg.merge_from_file('configs/exp_train_input_view_for_figure.yaml')
+    cfg.merge_from_file('configs/exp_gen_view_for_frontier.yaml')
     cfg.freeze()
 
     # =============================== basic setup =======================================

@@ -339,12 +339,15 @@ class Data_Gen_View:
                             fron_data['rgb'] = fron.rgb_obs.copy()
                             fron_data['depth'] = fron.depth_obs.copy()
                             fron_data['sseg'] = fron.sseg_obs.copy()
-                            fron_data['centroid'] = fron.centroid
-                            fron_data['points'] = fron.points
+                            fron_data['centroid'] = fron.centroid.astype(
+                                'int16')
+                            fron_data['points'] = fron.points.astype('int16')
                             eps_data['frontiers'].append(fron_data)
 
-                        eps_data['sseg_map'] = built_semantic_map
-                        eps_data['occ_map'] = observed_occupancy_map
+                        eps_data['sseg_map'] = built_semantic_map.astype(
+                            'int16')
+                        eps_data['occ_map'] = observed_occupancy_map.astype(
+                            'int16')
 
                         # '''
                         sample_name = str(count_sample).zfill(

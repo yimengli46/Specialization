@@ -21,16 +21,6 @@ _C.GENERAL.RANDOM_SEED = 5
 _C.SAVE = CN()
 _C.SAVE.SEMANTIC_MAP_PATH = 'output/semantic_map'
 _C.SAVE.OCCUPANCY_MAP_PATH = 'output/semantic_map'  # built occupancy map
-# saving folder for 3*18=54 test cases
-_C.SAVE.TESTING_RESULTS_FOLDER = 'output/TESTING_RESULTS_360degree_DP_UNet_occ_only_Predicted_Potential_10STEP_600STEPS'
-# saving folder for over 1000 test cases
-_C.SAVE.LARGE_TESTING_RESULTS_FOLDER = 'output/LARGE_TESTING_RESULTS_360degree_DP_UNet_occ_only_Predicted_Potential_10STEP_600STEPS'
-
-# ================================== for main_nav.py =====================
-_C.MAIN = CN()
-_C.MAIN.SPLIT = 'test'  # select from 'train', 'val', 'test'
-# for ('train', 'val', 'test'), num_scenes = (61, 11, 18), 90 in total.
-_C.MAIN.NUM_SCENES = 61
 
 # ==================================== for sensor =======================
 _C.SENSOR = CN()
@@ -59,29 +49,19 @@ _C.SEM_MAP.HABITAT_FLOOR_IDX = 2
 _C.SEM_MAP.POINTS_CNT = 2
 # complement the gap between the robot neighborhood and the projected occupancy map
 _C.SEM_MAP.GAP_COMPLEMENT = 10
+# enlarge size of the semantic map to visualize the object categories
+_C.SEM_MAP.VIS_ENLARGE_RATIO = 10
 
 # =============================== for navigator ====================================
 _C.NAVI = CN()
 _C.NAVI.NUM_STEPS = 600
 # how to build the ground-truth occ map, calling simulator or build it with point cloud height
 _C.NAVI.GT_OCC_MAP_TYPE = 'NAV_MESH'  # 'PCD_HEIGHT', 'NAV_MESH'
-_C.NAVI.NUM_STEPS_EXPLORE = 10
 
 _C.NAVI.DETECTOR = 'PanopticSeg'
 _C.NAVI.THRESH_REACH = 0.8
 
-_C.NAVI.USE_ROOM_TYPES = True
-
 _C.NAVI.HFOV = 90  # 360 means panorama, 90 means single view
-
-# possible choices 'Anticipation', 'Potential', 'UNet_Potential'
-_C.NAVI.PERCEPTION = 'Potential'
-
-_C.NAVI.STRATEGY = 'DP'  # 'Greedy' vs 'DP'
-
-_C.NAVI.D_type = 'Skeleton'  # 'Sqrt_R', 'Skeleton'
-
-_C.NAVI.PRUNE_SKELETON = False  # Prun skeleton or not
 
 # ========================== for short-range nav ====================================
 _C.LN = CN()

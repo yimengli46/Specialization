@@ -2,7 +2,6 @@ NAVI:
   NUM_STEPS: 500
   GT_OCC_MAP_TYPE: 'NAV_MESH'
   HFOV: 360
-  PERCEPTION: Potential
   STRATEGY: FME
   FLAG_VISUALIZE_MIDDLE_TRAJ: False
   NUM_STEPS_EXPLORE: 1
@@ -26,7 +25,7 @@ PRED:
     RESUME: ''
     SAVED_FOLDER: 'output/model_weights_RESNET_input_view'
     LR: 1e-3
-    NUM_PROCESS: 8
+    NUM_PROCESS: 1
     multiprocessing: 'single'
     GEN_SAMPLES_SAVED_FOLDER: 'output/training_data_input_view_1000samples'
     EPS_SAVE_GAP: 20

@@ -1,3 +1,6 @@
+"""
+run owl on a single panorama image
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 import bz2

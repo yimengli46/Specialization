@@ -1,35 +1,24 @@
 NAVI:
-  NUM_STEPS: 500
-  GT_OCC_MAP_TYPE: 'NAV_MESH'
-  HFOV: 360
-  STRATEGY: FME
   FLAG_VISUALIZE_MIDDLE_TRAJ: False
-  NUM_STEPS_EXPLORE: 1
 
 PRED:
   VIEW:
+    MODEL_TYPE: 'resnet'
     BATCH_SIZE: 3
-    CHECKNAME: resnet
+    RESNET_INPUT_CHANNEL: 3
+    RESNET_OUTPUTPUT_CHANNEL: 1 
     DEVICE: cuda
-    DIVIDE_AREA: 100
     EPOCHS: 6
     EVAL_INTERVAL: 1
     FLAG_VISUALIZE_PRED_LABELS: False
-    INPUT: depth_and_sem
-    INPUT_CHANNEL: 43 # 42 + 1
-    OUTPUT_CHANNEL: 4
-    INPUT_WH: (256, 256)
     LOSS_TYPE: L1
-    NUM_GENERATED_SAMPLES_PER_SCENE: 23
     NUM_WORKERS: 2
     RESUME: ''
-    SAVED_FOLDER: 'output/model_weights_RESNET_input_view'
+    SAVED_FOLDER: 'output/model_weights_input_view'
     LR: 1e-3
     NUM_PROCESS: 1
-    multiprocessing: 'single'
     GEN_SAMPLES_SAVED_FOLDER: 'output/training_data_input_view_1000samples'
     EPS_SAVE_GAP: 20
-    FLAG_VIS_FRONTIER_ON_MAP: False
 
 
 SAVE:

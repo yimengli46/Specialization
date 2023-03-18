@@ -229,6 +229,9 @@ class Data_Gen_View:
                         fron_sseg = panorama_sseg[:,
                                                   bin_from_deg - OBS_HALF_WIDTH: bin_from_deg + OBS_HALF_WIDTH]
 
+                        # check size of the observation
+                        assert fron_rgb.shape[0] == cfg.SENSOR.OBS_WIDTH
+
                         fron.rgb_obs = fron_rgb
                         fron.depth_obs = fron_depth
                         fron.sseg_obs = fron_sseg
@@ -245,7 +248,7 @@ class Data_Gen_View:
                         frontiers, agent_map_pose, dist_occupancy_map, self.LN)
 
                     # =========================== visualize all the frontier obs and panor ====================
-                    if self.random.random() < 1./cfg.PRED.VIEW.EPS_SAVE_GAP:
+                    if self.random.random() < 1. / cfg.PRED.VIEW.EPS_SAVE_GAP:
                         # if step % cfg.PRED.VIEW.EPS_SAVE_GAP == 0:
                         if cfg.PRED.VIEW.FLAG_VIS_FRONTIER_ON_MAP:
                             x_coord_lst, z_coord_lst, theta_lst = [], [], []

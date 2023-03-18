@@ -1,3 +1,7 @@
+"""
+run owl on the panoramas with all the object text inputs
+"""
+
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
@@ -10,7 +14,6 @@ import json
 import bz2
 import _pickle as cPickle
 import skimage.measure
-
 from PIL import Image
 import torch
 from transformers import OwlViTProcessor, OwlViTForObjectDetection
@@ -23,11 +26,11 @@ random.seed(SEED)
 np.random.seed(SEED)
 
 split = 'val'
-output_folder = f'output/owl_detections_on_densely_sampled_locations_small_objects_only_filtered/{split}'
+output_folder = f'output/owl_detections_on_densely_sampled_locations/{split}'
 semantic_map_folder = f'output/semantic_map/{split}'
 densely_sample_folder = f'output/densely_sample_locations_for_render_panor/{split}'
 
-list_scene_idx = [0, 1, 2, 3, 4, 5]
+list_scene_idx = [2, 3, 4, 5]
 
 scene_floor_dict = np.load(
     f'{cfg.GENERAL.SCENE_HEIGHTS_DICT_PATH}/{split}_scene_floor_dict.npy', allow_pickle=True).item()
@@ -80,76 +83,6 @@ for scene_idx in range(len(list_scene_idx)):
                 if 'ceiling' in word:
                     continue
                 if 'door' in word:
-                    continue
-                if 'table' in word:
-                    continue
-                if 'couch' in word:
-                    continue
-                if 'window' in word:
-                    continue
-                if 'stair' in word:
-                    continue
-                if 'chair' in word:
-                    continue
-                if 'cabinet' in word:
-                    continue
-                if 'wardrobe' in word:
-                    continue
-                if 'mat' in word:
-                    continue
-                if 'blanket' in word:
-                    continue
-                if 'clothes' in word:
-                    continue
-                if 'shoes' in word:
-                    continue
-                if 'shelf' in word:
-                    continue
-                if 'hanger' in word:
-                    continue
-                if 'pillow' in word:
-                    continue
-                if 'bathtub' in word:
-                    continue
-                if 'curtain' in word:
-                    continue
-                if 'oven' in word:
-                    continue
-                if 'frame' in word:
-                    continue
-                if 'FRAME' in word:
-                    continue
-                if 'sink' in word:
-                    continue
-                if 'shelves' in word:
-                    continue
-                if 'drawer' in word:
-                    continue
-                if 'painting' in word:
-                    continue
-                if 'appliance' in word:
-                    continue
-                if 'dresser' in word:
-                    continue
-                if 'mirror' in word:
-                    continue
-                if 'worktop' in word:
-                    continue
-                if 'microwave' in word:
-                    continue
-                if 'sheet' in word:
-                    continue
-                if 'accessory' in word:
-                    continue
-                if 'refrigerator' in word:
-                    continue
-                if 'kitchen' in word:
-                    continue
-                if 'desk' in word:
-                    continue
-                if 'fireplace' in word:
-                    continue
-                if 'handle' in word:
                     continue
                 set_categories.add(str(word))
 
@@ -259,20 +192,6 @@ for scene_idx in range(len(list_scene_idx)):
             elif 'sink' in v:
                 IGNORED_CLASS.append(k)
             elif 'shelves' in v:
-                IGNORED_CLASS.append(k)
-            elif 'drawer' in v:
-                IGNORED_CLASS.append(k)
-            elif 'painting' in v:
-                IGNORED_CLASS.append(k)
-            elif 'appliance' in v:
-                IGNORED_CLASS.append(k)
-            elif 'dresser' in v:
-                IGNORED_CLASS.append(k)
-            elif 'mirror' in v:
-                IGNORED_CLASS.append(k)
-            elif 'worktop' in v:
-                IGNORED_CLASS.append(k)
-            elif 'microwave' in v:
                 IGNORED_CLASS.append(k)
             else:
                 print(f'v = {v}')

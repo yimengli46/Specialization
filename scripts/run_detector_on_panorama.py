@@ -1,3 +1,6 @@
+"""
+run detectron2 panoptic segmentation on the panoramas
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 import bz2

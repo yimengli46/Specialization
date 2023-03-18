@@ -94,7 +94,8 @@ class SemanticMap:
             ax[0].get_xaxis().set_visible(False)
             ax[0].get_yaxis().set_visible(False)
             ax[0].set_title("rgb")
-            ax[1].imshow(sseg_img)
+            ax[1].imshow(apply_color_to_map(
+                sseg_img, type_categories='LVIS'))
             ax[1].get_xaxis().set_visible(False)
             ax[1].get_yaxis().set_visible(False)
             ax[1].set_title("sseg")

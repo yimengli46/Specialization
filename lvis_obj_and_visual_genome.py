@@ -3,8 +3,6 @@ Find the connection between lvis categories and VG
 '''
 import json
 import os
-import difflib
-import shutil
 from collections import Counter
 import os.path as osp
 import numpy as np
@@ -97,7 +95,8 @@ vg_full_list = sorted(list(subjects.keys()))
 # load lvis goal objects
 hm3d_to_lvis_dict = np.load(
     f'{output_folder}/hm3d_to_lvis_dict.npy', allow_pickle=True).item()
-lvis_objs = sorted(list(hm3d_to_lvis_dict.values()))
+lvis_objs = sorted(list(set(hm3d_to_lvis_dict.values())))
+#assert 1 == 2
 
 # ==================== compute the embedding of lvis obj and vm obj ==================
 model = SentenceTransformer('multi-qa-MiniLM-L6-cos-v1')
@@ -113,11 +112,11 @@ vg_list = []  # visual genome subjects got matched
 # map the lvis objects to vg objects
 for i, obj in enumerate(lvis_objs):
     a = lvis_objs[i]
-    b = difflib.get_close_matches(
-        obj, possibilities=vg_full_list, n=5, cutoff=0.9)
+    # b = difflib.get_close_matches(
+    #     obj, possibilities=vg_full_list, n=5, cutoff=0.9)
     b = find_synonyms_with_sentenceTransformer(
         model, i, obj, lvis_objs_embedding, vg_objs_embedding, vg_full_list, n=5, thresh=0.65)
-    print(f'a = {a}, b = {b}')
+    #print(f'a = {a}, b = {b}')
     lvis_vg_map[a] = b
     vg_list.extend(lvis_vg_map[lvis_objs[i]])
 
@@ -349,20 +348,20 @@ merge lvis_obj synonyms
 """
 with bz2.BZ2File(f'{output_folder}/LVIS_categories_and_embedding.pbz2', 'rb') as fp:
     LVIS_dict = cPickle.load(fp)
-    lvis_cat_list = LVIS_dict['categories']
+    lvis_cat_list = LVIS_dict['cat_synonyms']
     lvis_rowid_to_catid_dict = LVIS_dict['rowid2catid_dict']
 
 lvis_cat_relationships = {}
 for obj1 in sorted(list(top_subject_relationships)):
     data = top_subject_relationships[obj1]
-    obj1_id = lvis_cat_list.index(obj1)
+    obj1_id = lvis_rowid_to_catid_dict[lvis_cat_list.index(obj1)]
 
     if obj1_id in lvis_cat_relationships:
         new_data = lvis_cat_relationships[obj1_id]
     else:
         new_data = {}
     for obj2 in sorted(list(data.keys())):
-        obj2_id = lvis_cat_list.index(obj2)
+        obj2_id = lvis_rowid_to_catid_dict[lvis_cat_list.index(obj2)]
         if obj2_id in new_data:
             new_data[obj2_id] += data[obj2]
         else:
@@ -375,22 +374,37 @@ for obj1 in sorted(list(top_subject_relationships)):
 """
 Build the adjacency matrix 
 """
+
+'''
 all_obj = sorted(list(top_subject_relationships.keys()))
-adjacency = np.zeros((len(all_obj), len(all_obj)), dtype=int)
+adjacency_obj = np.zeros((len(all_obj), len(all_obj)), dtype=int)
 
 for i, obj_file in enumerate(all_obj):
     data = top_subject_relationships[obj_file]
     subjects = list(data.keys())
     for obj in subjects:
         if (data[obj] >= 5):
-            adjacency[i][all_obj.index(f"{obj}")] = 1
+            adjacency_obj[i][all_obj.index(f"{obj}")] = 1
+'''
 
-# all_obj = sorted(list(lvis_cat_relationships.keys()))
-# adjacency = np.zeros((len(all_obj), len(all_obj)), dtype=int)
 
-# for i, obj_file in enumerate(all_obj):
-#     data = lvis_cat_relationships[obj_file]
-#     subjects = list(data.keys())
-#     for obj in subjects:
-#         if (data[obj] >= 5):
-#             adjacency[i][all_obj.index(f"{obj}")] = 1
+all_obj_cat_ids = sorted(list(lvis_cat_relationships.keys()))
+adjacency_cat_id = np.zeros(
+    (len(all_obj_cat_ids), len(all_obj_cat_ids)), dtype=np.int16)
+
+for i, obj_cat_id in enumerate(all_obj_cat_ids):
+    data = lvis_cat_relationships[obj_cat_id]
+    subjects = list(data.keys())
+    for obj2_cat_id in subjects:
+        if (data[obj2_cat_id] >= 5):
+            adjacency_cat_id[i][all_obj_cat_ids.index(obj2_cat_id)] = 1
+
+LVIS_relationships = {}
+LVIS_relationships['cat_id_relationship_dict'] = lvis_cat_relationships
+LVIS_relationships['adjacency_cat_id'] = adjacency_cat_id
+LVIS_relationships['all_obj_cat_ids'] = all_obj_cat_ids
+with bz2.BZ2File(f'{output_folder}/LVIS_relationships.pbz2', 'w') as fp:
+    cPickle.dump(
+        LVIS_relationships,
+        fp
+    )

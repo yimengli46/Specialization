@@ -63,6 +63,9 @@ _C.NAVI.THRESH_REACH = 0.8
 
 _C.NAVI.HFOV = 90  # 360 means panorama, 90 means single view
 
+# maximum distance to the object goal
+_C.NAVI.MAXIMUM_DIST_TO_OBJ_GOAL = 10000.0
+
 # ========================== for short-range nav ====================================
 _C.LN = CN()
 _C.LN.LOCAL_MAP_MARGIN = 30
@@ -83,18 +86,15 @@ _C.PRED = CN()
 
 # ========================= input view===============
 _C.PRED.VIEW = CN()
-# devide the real area by a constant
-_C.PRED.VIEW.DIVIDE_AREA = 1000
-# devide the real D by a constant
-_C.PRED.VIEW.DIVIDE_D = 10
+# model type
+_C.PRED.VIEW.MODEL_TYPE = ''
 # number of workers for the dataloader
 _C.PRED.VIEW.NUM_WORKERS = 1
 # batch size
 _C.PRED.VIEW.BATCH_SIZE = 4
-# input size in to the model (W, H)
-_C.PRED.VIEW.INPUT_WH = (256, 256)
-# model name
-_C.PRED.VIEW.CHECKNAME = 'resnet'
+# resnet input channel
+_C.PRED.VIEW.RESNET_INPUT_CHANNEL = 3
+_C.PRED.VIEW.RESNET_OUTPUT_CHANNEL = 64
 # loss function
 _C.PRED.VIEW.LOSS_TYPE = 'CE'
 # number of training epoches
@@ -107,32 +107,18 @@ _C.PRED.VIEW.LR_SCHEDULER = 'poly'
 _C.PRED.VIEW.RESUME = ''
 # between the number of interval we will evaluate the model on the validation set
 _C.PRED.VIEW.EVAL_INTERVAL = 2
-# name of the dataset
-_C.PRED.VIEW.DATASET = 'MP3D'
 # model weights saving folder
-_C.PRED.VIEW.SAVED_FOLDER = 'output/model_weights_RESNET_input_view'
-# input type of the model, having semantic map or not
-_C.PRED.VIEW.INPUT = 'depth_only'  # select from ['occ_and_sem', 'occ_only']
-# number of the input channels of UNet
-_C.PRED.VIEW.INPUT_CHANNEL = 1
-# number of output channels of UNet
-_C.PRED.VIEW.OUTPUT_CHANNEL = 1
+_C.PRED.VIEW.SAVED_FOLDER = 'output/model_weights_input_view'
 # device number
 _C.PRED.VIEW.DEVICE = 'cuda'
 # number of generated samples per scene, used for data generator
 _C.PRED.VIEW.NUM_GENERATED_SAMPLES_PER_SCENE = 1000
 # Number of processes to generate data
 _C.PRED.VIEW.NUM_PROCESS = 4
-# Use MPI4py
-_C.PRED.VIEW.multiprocessing = 'single'  # 'single', 'mp', 'mpi4py'
 # folder to save the generated data
 _C.PRED.VIEW.GEN_SAMPLES_SAVED_FOLDER = 'output/training_data_input_view_1000samples'
 # visualize the frontier and the map
 _C.PRED.VIEW.FLAG_VIS_FRONTIER_ON_MAP = False
-
-# =============================== for Evaluation =====================================
-_C.EVAL = CN()
-_C.EVAL.USE_ALL_START_POINTS = False
 
 # ========================== experiments =============================
 _C.EXPERIMENTS = CN()

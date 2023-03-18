@@ -103,9 +103,9 @@ set_categories = sorted(list(set_categories))
 # for each elem in the set_categories, find its cat_id
 with bz2.BZ2File(f'{output_folder}/LVIS_categories_and_embedding.pbz2', 'rb') as fp:
     LVIS_dict = cPickle.load(fp)
-    lvis_cat_list = LVIS_dict['categories']
+    lvis_cat_list = LVIS_dict['cat_synonyms']
     lvis_rowid_to_catid_dict = LVIS_dict['rowid2catid_dict']
-    lvis_cat_embedding = LVIS_dict['embedding']
+    lvis_cat_embedding = LVIS_dict['cat_synonyms_embedding']
 
 model = SentenceTransformer('multi-qa-MiniLM-L6-cos-v1')
 
@@ -134,63 +134,103 @@ with open(f'{output_folder}/mapping_HM3D_to_LVIS.csv', mode='w') as csv_file:
 
             hm3d_to_lvis_dict[hm3d_cat] = lvis_cat_list[idx_lvis_cat]
 
+# ======================= remove the unwanted hm3d categories ===================
+hm3d_to_lvis_dict.pop('air duct')
+hm3d_to_lvis_dict.pop('air vent')
+hm3d_to_lvis_dict.pop('air vent fan')
+hm3d_to_lvis_dict.pop('ball pool')
+hm3d_to_lvis_dict.pop('banner')
+hm3d_to_lvis_dict.pop('bar')
+hm3d_to_lvis_dict['basket of towels'] = 'basket'
+hm3d_to_lvis_dict.pop('bath utensil')
+hm3d_to_lvis_dict.pop('bath wall')
+hm3d_to_lvis_dict['bathmat'] = 'bath_mat'
+hm3d_to_lvis_dict.pop('bathroom stuff')
+hm3d_to_lvis_dict.pop('bedframe')
+hm3d_to_lvis_dict.pop('bin')
+hm3d_to_lvis_dict.pop('board')
+hm3d_to_lvis_dict.pop('boards')
+hm3d_to_lvis_dict.pop('book shelf')
+hm3d_to_lvis_dict.pop('bookshelf')
+hm3d_to_lvis_dict['bowl of sweets'] = 'bowl'
+hm3d_to_lvis_dict['cabidet'] = 'cabinet'
+hm3d_to_lvis_dict.pop('can of paint')
+hm3d_to_lvis_dict.pop('cans of paint')
+hm3d_to_lvis_dict['carpet roll'] = 'runner_(carpet)'
+hm3d_to_lvis_dict.pop('ceiling fan vent')
+hm3d_to_lvis_dict.pop('ceiling pipe')
+hm3d_to_lvis_dict.pop('ceiling pipes')
+hm3d_to_lvis_dict.pop('column')
+hm3d_to_lvis_dict.pop('counter')
+hm3d_to_lvis_dict.pop('cross')
+hm3d_to_lvis_dict.pop('decorative cloth')
+hm3d_to_lvis_dict.pop('door')
+hm3d_to_lvis_dict.pop('door  hinge')
+hm3d_to_lvis_dict.pop('door framr')
+hm3d_to_lvis_dict.pop('door handle')
+hm3d_to_lvis_dict.pop('door hinge')
+hm3d_to_lvis_dict.pop('door knob')
+hm3d_to_lvis_dict.pop('door mat')
+hm3d_to_lvis_dict.pop('door slide')
+hm3d_to_lvis_dict.pop('doors')
+hm3d_to_lvis_dict['drum'] = 'drum_(musical_instrument)'
+hm3d_to_lvis_dict.pop('elevator')
+hm3d_to_lvis_dict.pop('file binder')
+hm3d_to_lvis_dict.pop('floor vent')
+hm3d_to_lvis_dict.pop('fruit')
+hm3d_to_lvis_dict.pop('fruits')
+hm3d_to_lvis_dict.pop('furniture')
+hm3d_to_lvis_dict.pop('garage door motor')
+hm3d_to_lvis_dict.pop('grate')
+hm3d_to_lvis_dict.pop('heat vent')
+hm3d_to_lvis_dict['jewlery box'] = 'jewelry'
+hm3d_to_lvis_dict.pop('lid')
+hm3d_to_lvis_dict.pop('oven vent')
+hm3d_to_lvis_dict.pop('pitcher')
+hm3d_to_lvis_dict.pop('rack')
+hm3d_to_lvis_dict.pop('rail')
+hm3d_to_lvis_dict.pop('shower door')
+hm3d_to_lvis_dict.pop('shower glass')
+hm3d_to_lvis_dict.pop('shower knob')
+hm3d_to_lvis_dict.pop('shower pipe')
+hm3d_to_lvis_dict.pop('sideboard')
+hm3d_to_lvis_dict.pop('sign')
+hm3d_to_lvis_dict.pop('skirting board')
+hm3d_to_lvis_dict.pop('skylight')
+hm3d_to_lvis_dict.pop('socket')
+hm3d_to_lvis_dict['soft chair'] = 'sofa'
+hm3d_to_lvis_dict.pop('stair step')
+hm3d_to_lvis_dict.pop('stone')
+hm3d_to_lvis_dict.pop('stones')
+hm3d_to_lvis_dict['stuffed duck'] = 'toy'
+hm3d_to_lvis_dict['table on wheels'] = 'table'
+hm3d_to_lvis_dict.pop('tank')
+hm3d_to_lvis_dict['toilet cabinet'] = 'cabinet'
+hm3d_to_lvis_dict.pop('toilet cleaner')
+hm3d_to_lvis_dict['toilet handle'] = 'toilet'
+hm3d_to_lvis_dict['toilet paper dispenser'] = 'toilet_paper'
+hm3d_to_lvis_dict.pop('toilet plunger')
+hm3d_to_lvis_dict.pop('toiletry')
+hm3d_to_lvis_dict.pop('toiletry bag')
+hm3d_to_lvis_dict.pop('towel paper dispenser')
+hm3d_to_lvis_dict['toy airplane'] = 'toy'
+hm3d_to_lvis_dict.pop('tree')
+hm3d_to_lvis_dict['tv table'] = 'table'
+hm3d_to_lvis_dict.pop('unknown/ probably fan vent')
+hm3d_to_lvis_dict.pop('vegetables')
+hm3d_to_lvis_dict.pop('vent')
+hm3d_to_lvis_dict.pop('ventialtion')
+hm3d_to_lvis_dict.pop('ventilation')
+hm3d_to_lvis_dict.pop('ventilation hood')
+hm3d_to_lvis_dict.pop('ventilator')
+hm3d_to_lvis_dict.pop('vessel')
+hm3d_to_lvis_dict.pop('wal')
+hm3d_to_lvis_dict.pop('wall')
+hm3d_to_lvis_dict.pop('wall cubby')
+hm3d_to_lvis_dict.pop('wall vent')
+hm3d_to_lvis_dict.pop('washing stuff')
+hm3d_to_lvis_dict.pop('wine rack')
+hm3d_to_lvis_dict.pop('śign')
+
+
 np.save(f'{output_folder}/hm3d_to_lvis_dict.npy', hm3d_to_lvis_dict)
-
-
-'''
-# ======================== clean up the obj list
-obj_list = list(map(lambda s: s.strip().lower(), set_categories))
-
-print(f'len(obj_list) = {len(obj_list)}')
-
-# remove unwanted words
-temp_obj_list = set()
-for obj in obj_list:
-    obj = obj.replace('/', ' ')
-    obj = obj.replace('-', ' ')
-    obj = obj.replace(' w ', ' ')
-    if 'unknown' not in obj and len(obj) > 0:
-        temp_obj_list.add(obj.strip())
-obj_list = temp_obj_list
-
-obj_list = sorted(obj_list)
-# ============ remove synonyms
-obj1_obj2_map = {}
-
-for i, obj in enumerate(obj_list):
-    a = obj_list[i]
-    b = difflib.get_close_matches(
-        obj, possibilities=obj_list[i+1:], n=5, cutoff=0.9)
-    print(f'a = {a}, b = {b}')
-    obj1_obj2_map[a] = b
-
-for k, v in obj1_obj2_map.items():
-    for word in v:
-        try:
-            obj_list.remove(word)
-        except:
-            print(f'word {word} is already removed.')
-
-
-# f= open(f"{output_folder}/HM3D_categories.txt","w+")
-# for i in range(len(obj_list)-1):
-#     f.write(sorted(obj_list)[i]+'\n')
-# f.write(sorted(obj_list)[-1])
-# f.close()
-
-
-# ===========================================================================================
-with open('/home/yimeng/work/topo_map_specialization/MJOLNIR-master/kg_prep/kg_data/thor_v1_objects.txt') as f:
-    thor_obj_list = f.readlines()
-
-thor_obj_list = list(map(lambda s: s.strip().lower(), thor_obj_list))
-
-hm3dobj_thorobj_map = {}
-
-for i, obj in enumerate(thor_obj_list):
-    a = thor_obj_list[i]
-    b = difflib.get_close_matches(obj, possibilities=obj_list, n=5, cutoff=0.9)
-    if len(b) > 0:
-        print(f'a = {a}, b = {b}')
-        hm3dobj_thorobj_map[a] = b
-'''

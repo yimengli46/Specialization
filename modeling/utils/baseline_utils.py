@@ -460,3 +460,12 @@ def planner_rot_to_map_rot(rot):
     """ convert rotation on the environment 'rot' to rotation on the map 'rotate_rot'"""
     rotate_rot = -(rot - .5 * pi)
     return rotate_rot
+
+
+def get_img_coordinates(img):
+    H, W = img.shape[:2]
+    x = np.linspace(0, W - 1, W)
+    y = np.linspace(0, H - 1, H)
+    xv, yv = np.meshgrid(x, y)
+    coords = np.stack((xv, yv), axis=2)
+    return coords

@@ -1,3 +1,8 @@
+"""
+densely sample locations on the occupancy map
+collect panoramaic views at sampled locations
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from math import pi

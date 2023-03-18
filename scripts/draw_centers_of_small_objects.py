@@ -1,3 +1,6 @@
+"""
+draw the small object names on the semantic map
+"""
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt

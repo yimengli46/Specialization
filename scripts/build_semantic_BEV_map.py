@@ -115,7 +115,7 @@ for scene_with_index in sem_filenames:
                         depth_img = observations['depth'][:, :, 0]
                         InsSeg_img = observations["semantic"]
                         sseg_img = convertInsSegToSSeg(
-                            InsSeg_img, ins2cat_dict)
+                            InsSeg_img, ins2cat_dict)[:, :, 0]
 
                         # =============================== get agent global pose on habitat env ========================#
                         agent_pos = env.get_agent_state().position

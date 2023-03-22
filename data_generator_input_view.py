@@ -365,6 +365,7 @@ class Data_Gen_View:
                         count_sample += 1
                         if count_sample == num_samples:
                             self.env.close()
+                            gpu_Q.put(self.device_id)
                             return
 
                     # ============================================= visualize semantic map ===========================================#

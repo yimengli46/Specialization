@@ -94,7 +94,7 @@ _C.PRED.VIEW.NUM_WORKERS = 1
 _C.PRED.VIEW.BATCH_SIZE = 4
 # resnet input channel
 _C.PRED.VIEW.RESNET_INPUT_CHANNEL = 3
-_C.PRED.VIEW.RESNET_OUTPUT_CHANNEL = 64
+_C.PRED.VIEW.RESNET_OUTPUT_CHANNEL = 1
 # loss function
 _C.PRED.VIEW.LOSS_TYPE = 'CE'
 # number of training epoches
@@ -117,6 +117,8 @@ _C.PRED.VIEW.NUM_GENERATED_SAMPLES_PER_SCENE = 1000
 _C.PRED.VIEW.NUM_PROCESS = 4
 # folder to save the generated data
 _C.PRED.VIEW.GEN_SAMPLES_SAVED_FOLDER = 'output/training_data_input_view_1000samples'
+# folder to save the processed frontier data
+_C.PRED.VIEW.PROCESSED_FRONTIER_SAVED_FOLDER = 'output/training_data_processed_frontier_1000samples'
 # visualize the frontier and the map
 _C.PRED.VIEW.FLAG_VIS_FRONTIER_ON_MAP = False
 

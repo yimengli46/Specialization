@@ -29,7 +29,7 @@ scene_name = '00009-vLpv2VX547B'
 floor_id = 0
 step_id = 10
 # 'knowledge_graph'  # 'context_matrix'  # 'resnet'
-embedding_type = 'knowledge_graph'
+embedding_type = 'resnet'
 target_cat = 'toy'
 
 data_folder = 'output/training_data_input_view_1000samples/train'
@@ -110,6 +110,7 @@ plt.show()
 if embedding_type == 'resnet':
     tensor_img = torch.tensor(
         rgb_img, dtype=torch.float32).unsqueeze(0).permute(0, 3, 1, 2).cuda()
+    print(f'tensor_img.shape = {tensor_img.shape}')
     model = resnet(3, 1, lvis_cat_synonyms_list, lvis_cat_synonyms_embedding,
                    goal_obj_index_list, goal_obj_index_embeddings)
     model = model.cuda()

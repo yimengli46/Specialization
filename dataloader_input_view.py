@@ -166,18 +166,19 @@ class view_dataset(data.Dataset):
         # initialize a location
         goal_category = self.random.choice(
             list(self.goal_category_set))  # 'toy'
+        goal_category_index = self.LVIS_dict['rowid2catid_dict'][self.LVIS_dict['cat_synonyms'].index(
+            goal_category)]
         #goal_category = 'toy'
         print(f'goal_category = {goal_category}')
 
         # ============================ localize the object on the map ==================
-        # narrow the instance label image to same size as the semantic map
-        # instance_label_small = cv2.resize(
-        #     instance_label, (W, H), interpolation=cv2.INTER_NEAREST)
-        # find the instances containing the goal category
+        # find the instances under the same goal_category_idx
         ins_list_containing_goal = []
         for ins in self.list_instances:
             cat = self.idx2cat_dict[ins['cat']]
-            if goal_category in cat:
+            cat_index = self.LVIS_dict['rowid2catid_dict'][self.LVIS_dict['cat_synonyms'].index(
+                cat)]
+            if cat_index == goal_category_index:
                 #print(f'cat = {cat}')
                 ins_list_containing_goal.append(ins)
 
@@ -242,48 +243,6 @@ class view_dataset(data.Dataset):
                     nearest_end_idx = np.argmin(ends_costs)
 
                 print(f'dist = {dist:.2f}')
-
-                # ======================= prepare the return =================
-                tensor_rgb = torch.tensor(fron['rgb']).float().permute(2, 0, 1)
-                assert tensor_rgb.shape[1] == cfg.SENSOR.OBS_WIDTH
-                goal_obj = goal_category
-                tensor_dist = torch.tensor([dist]).float()
-
-                # compute the bbox
-                sseg_img = fron['sseg']
-                img_hm3d_cat_index_list = np.unique(sseg_img)
-                bbox_list = []
-                # create image coordinates
-                coords = get_img_coordinates(sseg_img)
-                # convert sseg_img into bbox
-                for hm3d_cat_index in img_hm3d_cat_index_list:
-                    lvis_cat_name = self.idx2cat_dict[hm3d_cat_index]
-                    # if current category is in the goal category list
-                    if lvis_cat_name in self.goal_category_set:
-                        #print(f'cat_name = {lvis_cat_name}')
-                        # create binary image for current category index
-                        cat_binary_map = np.zeros(
-                            sseg_img.shape, dtype=np.int16)
-                        cat_binary_map[sseg_img == hm3d_cat_index] = 1
-                        instance_label, num_ins = skimage.measure.label(
-                            cat_binary_map, background=0, connectivity=1, return_num=True)
-                        #print(f'num_ins = {num_ins}')
-                        # plt.imshow(cat_binary_map)
-                        # plt.show()
-                        # create a bbox for each mask
-                        for idx_ins in range(1, num_ins + 1):
-                            mask_ins = (instance_label == idx_ins)
-                            mask_coords = coords[mask_ins]
-                            x1 = np.min(mask_coords[:, 0])
-                            x2 = np.max(mask_coords[:, 0])
-                            y1 = np.min(mask_coords[:, 1])
-                            y2 = np.max(mask_coords[:, 1])
-                            cat_id = self.LVIS_dict['rowid2catid_dict'][self.LVIS_dict['cat_synonyms'].index(
-                                lvis_cat_name)]
-                            if x2 - x1 > 5 and y2 - y1 > 5:
-                                bbox_list.append([x1, y1, x2, y2, cat_id])
-
-                return {'rgb': tensor_rgb, 'bbox': bbox_list, 'goal_obj': goal_obj, 'dist': tensor_dist}
 
                 if False:  # cfg.NAVI.FLAG_VISUALIZE_FRONTIER_POTENTIAL:
                     fig, ax = plt.subplots(nrows=2,
@@ -376,6 +335,48 @@ class view_dataset(data.Dataset):
                     fig.tight_layout()
                     #plt.title(f'component {ii}')
                     plt.show()
+
+                # ======================= prepare the return =================
+                tensor_rgb = torch.tensor(fron['rgb']).float().permute(2, 0, 1)
+                assert tensor_rgb.shape[1] == cfg.SENSOR.OBS_WIDTH
+                goal_obj = goal_category
+                tensor_dist = torch.tensor([dist]).float()
+
+                # compute the bbox
+                sseg_img = fron['sseg']
+                img_hm3d_cat_index_list = np.unique(sseg_img)
+                bbox_list = []
+                # create image coordinates
+                coords = get_img_coordinates(sseg_img)
+                # convert sseg_img into bbox
+                for hm3d_cat_index in img_hm3d_cat_index_list:
+                    lvis_cat_name = self.idx2cat_dict[hm3d_cat_index]
+                    # if current category is in the goal category list
+                    if lvis_cat_name in self.goal_category_set:
+                        #print(f'cat_name = {lvis_cat_name}')
+                        # create binary image for current category index
+                        cat_binary_map = np.zeros(
+                            sseg_img.shape, dtype=np.int16)
+                        cat_binary_map[sseg_img == hm3d_cat_index] = 1
+                        instance_label, num_ins = skimage.measure.label(
+                            cat_binary_map, background=0, connectivity=1, return_num=True)
+                        #print(f'num_ins = {num_ins}')
+                        # plt.imshow(cat_binary_map)
+                        # plt.show()
+                        # create a bbox for each mask
+                        for idx_ins in range(1, num_ins + 1):
+                            mask_ins = (instance_label == idx_ins)
+                            mask_coords = coords[mask_ins]
+                            x1 = np.min(mask_coords[:, 0])
+                            x2 = np.max(mask_coords[:, 0])
+                            y1 = np.min(mask_coords[:, 1])
+                            y2 = np.max(mask_coords[:, 1])
+                            cat_id = self.LVIS_dict['rowid2catid_dict'][self.LVIS_dict['cat_synonyms'].index(
+                                lvis_cat_name)]
+                            if x2 - x1 > 5 and y2 - y1 > 5:
+                                bbox_list.append([x1, y1, x2, y2, cat_id])
+
+                return {'rgb': tensor_rgb, 'bbox': bbox_list, 'goal_obj': goal_obj, 'dist': tensor_dist}
 
 
 def get_all_view_dataset(split, data_folder, hm3d_to_lvis_dict, LVIS_dict):

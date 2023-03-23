@@ -48,7 +48,7 @@ class resnet(nn.Module):
         z = torch.cat((z, target_embedding), dim=1)
 
         y_pred = self.fc(z)
-
+        #print(f'y_pred.shape = {y_pred.shape}')
         return y_pred
 
 

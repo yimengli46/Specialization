@@ -1,0 +1,28 @@
+NAVI:
+  NUM_STEPS: 500
+  GT_OCC_MAP_TYPE: 'NAV_MESH'
+  HFOV: 360
+  PERCEPTION: Potential
+  STRATEGY: FME
+  FLAG_VISUALIZE_MIDDLE_TRAJ: False
+  NUM_STEPS_EXPLORE: 1
+
+PRED:
+  VIEW:
+    NUM_PROCESS: 3
+    multiprocessing: 'mp'
+    PROCESSED_VIEW_SAVED_FOLDER: 'output/training_preprocessed_view_1000samples'
+    GEN_SAMPLES_SAVED_FOLDER: 'output/training_data_input_view_1000samples'
+    FLAG_VIS_FRONTIER_ON_MAP: False
+
+
+SAVE:
+  TESTING_RESULTS_FOLDER: ''
+
+SEM_MAP:
+  CELL_SIZE: 0.05
+  GRID_CLASS_SIZE: 250
+  FLAG_VISUALIZE_EGO_OBS: False
+
+SENSOR:
+  OBS_WIDTH: 512

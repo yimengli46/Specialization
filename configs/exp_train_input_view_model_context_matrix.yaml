@@ -6,7 +6,7 @@ PRED:
     MODEL_TYPE: 'context_matrix'
     BATCH_SIZE: 3
     DEVICE: cuda
-    EPOCHS: 6
+    EPOCHS: 4
     EVAL_INTERVAL: 1
     FLAG_VISUALIZE_PRED_LABELS: False
     LOSS_TYPE: L1
@@ -16,6 +16,7 @@ PRED:
     LR: 1e-3
     NUM_PROCESS: 1
     GEN_SAMPLES_SAVED_FOLDER: 'output/training_data_input_view_1000samples'
+    PROCESSED_VIEW_SAVED_FOLDER: 'output/training_preprocessed_view_1000samples'
     EPS_SAVE_GAP: 20
 
 

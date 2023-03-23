@@ -26,7 +26,7 @@ class resnet(nn.Module):
         self.resnet.conv1 = nn.Conv2d(
             n_channel_in, 64, kernel_size=3, stride=1, padding=1, bias=False
         )
-        self.fc = nn.Linear(256 + 384, n_class_out)
+        self.fc = nn.Linear(256 + 384, 2)
 
         self.lvis_cat_synonyms_list = lvis_cat_synonyms_list
         self.lvis_cat_synonyms_embedding = lvis_cat_synonyms_embedding
@@ -65,7 +65,8 @@ class context_matrix(nn.Module):
         self.goal_obj_index_list = goal_obj_index_list
 
         self.fc1 = nn.Linear(310 * 5, 256)
-        self.fc2 = nn.Linear(256 + 384, 1)
+        self.fc2 = nn.Linear(256 + 384, 2)
+        #self.sigmoid = nn.Sigmoid()
 
     def forward(self, objbb_list, target_obj_list):
         objstate = torch.zeros(len(objbb_list), self.n, 4).float()
@@ -153,7 +154,8 @@ class knowledge_graph(nn.Module):
         self.W2 = nn.Linear(256, 1, bias=False)
 
         self.fc1 = nn.Linear(self.n, 256)
-        self.fc2 = nn.Linear(256 + 384, 1)
+        self.fc2 = nn.Linear(256 + 384, 2)
+        #self.sigmoid = nn.Sigmoid()
 
     def forward(self, objbb_list, target_obj_list):
         B = len(objbb_list)

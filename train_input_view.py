@@ -13,6 +13,7 @@ from core import cfg
 import bz2
 import _pickle as cPickle
 import argparse
+from sklearn.metrics import f1_score
 
 
 def train(model_type):
@@ -63,7 +64,7 @@ def train(model_type):
         i - 1 for i in goal_obj_index_list]]  # shape: 310 x 384
 
     # =========================================================== Define Dataloader ==================================================
-    data_folder = cfg.PRED.VIEW.GEN_SAMPLES_SAVED_FOLDER
+    data_folder = cfg.PRED.VIEW.PROCESSED_VIEW_SAVED_FOLDER
     dataset_train = get_all_view_dataset(
         'train', data_folder, hm3d_to_lvis_dict, LVIS_dict)
     dataloader_train = data.DataLoader(dataset_train,
@@ -108,7 +109,9 @@ def train(model_type):
     # Define Criterion
     # whether to use class balanced weights
     weight = None
-    criterion = nn.L1Loss()
+    #criterion = nn.L1Loss()
+    criterion = nn.CrossEntropyLoss(
+        weight=torch.tensor([1, 50]).float()).cuda()
     best_test_loss = 1e10
 
     # ===================================================== Resuming checkpoint ====================================================
@@ -147,6 +150,8 @@ def train(model_type):
             elif cfg.PRED.VIEW.MODEL_TYPE == 'knowledge_graph':
                 output = model(bbox_list, goal_objs)
             print(f'output.shape = {output.shape}')
+            #print(f'output = {output}')
+            #print(f'dists = {dists}')
             loss = criterion(output, dists)
 
             # ================================================= compute gradient =================================================
@@ -172,6 +177,8 @@ def train(model_type):
             test_loss = 0.0
             iter_num = 0
 
+            y_pred = []
+            y_label = []
             for batch in dataloader_val:
                 print('epoch = {}, iter_num = {}'.format(epoch, iter_num))
                 images, bbox_list, goal_objs, dists = batch['rgb'], batch[
@@ -194,6 +201,10 @@ def train(model_type):
                 #print(f'output.shape = {output.shape}')
                 loss = criterion(output, dists)
 
+                # concatenate the results
+                y_pred += output.argmax(dim=1).cpu().tolist()
+                y_label += dists.cpu().tolist()
+
                 test_loss += loss.item()
                 print('Test loss: %.3f' % (test_loss / (iter_num + 1)))
                 writer.add_scalar('val/total_loss_iter', loss.item(),
@@ -203,10 +214,19 @@ def train(model_type):
 
             # Fast test during the training
             writer.add_scalar('val/total_loss_epoch', test_loss, epoch)
+
+            # compuate acc
+            y_pred = (np.array(y_pred).flatten() > 0.5)
+            y_label = np.array(y_label).flatten()
+            acc = (y_pred == y_label).mean()
+            f1 = f1_score(y_label, y_pred, average='weighted')
+            writer.add_scalar('val/acc_epoch', acc, epoch)
+            writer.add_scalar('val/f1_score', f1, epoch)
+
             print('Validation:')
             print('[Epoch: %d, numImages: %5d]' %
-                  (epoch, iter_num * cfg.PRED.PARTIAL_MAP.BATCH_SIZE))
-            print('Loss: %.3f' % test_loss)
+                  (epoch, iter_num * cfg.PRED.VIEW.BATCH_SIZE))
+            print(f'Loss: {test_loss:.3f}, ACC: {acc:.3f}, F1-score: {f1:.3f}')
 
             saver.save_checkpoint({
                 'epoch': epoch + 1,

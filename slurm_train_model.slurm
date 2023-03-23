@@ -1,7 +1,7 @@
 #!/bin/sh
 
 ## Give your job a name to distinguish it from other jobs you run.
-# SBATCH --job-name=data_gen
+# SBATCH --job-name=train_model
 
 ## General partitions: all-HiPri, bigmem-HiPri   --   (12 hour limit)
 ##                     all-LoPri, bigmem-LoPri, gpuq  (5 days limit)
@@ -21,13 +21,12 @@
 #SBATCH --mem=300G        # Total memory needed per task (units: K,M,G,T)
 
 ## Specify how much time your job needs. (default: see partition above)
-## SBATCH --time=5-00:00   # Total time needed for job: Days-Hours:Minutes
-#SBATCH --deadline=03/12-23:00
+#SBATCH --time=5-00:00   # Total time needed for job: Days-Hours:Minutes
 
-#SBATCH --gres=gpu:2
-#SBATCH --nodelist=NODE079
+#SBATCH --gres=gpu:1
+#SBATCH --nodelist=NODE080
 
-#SBATCH --cpus-per-task 24
+#SBATCH --cpus-per-task 20
 
 ## Load the relevant modules needed for the job
 module load cuda/11.2
@@ -37,5 +36,6 @@ module load gcc/7.5.0
 source /scratch/yli44/env_specialization/bin/activate
 
 ## Run your program or script
-#python data_generator_input_view.py --split='val'  --j=10
-python data_generator_input_view.py --split='train' --j=10
+#python train_input_view.py --model=resnet
+#python train_input_view.py --model=context_matrix
+python train_input_view.py --model=knowledge_graph

@@ -24,7 +24,7 @@
 #SBATCH --time=5-00:00   # Total time needed for job: Days-Hours:Minutes
 
 #SBATCH --gres=gpu:1
-#SBATCH --nodelist=NODE081
+#SBATCH --nodelist=NODE079
 
 #SBATCH --cpus-per-task 24
 
@@ -36,5 +36,5 @@ module load gcc/7.5.0
 source /scratch/yli44/env_specialization/bin/activate
 
 ## Run your program or script
-#python preprocessing_view.py --split='val'  --j=6
-python preprocessing_view.py --split='train'
+python preprocessing_view.py --split='val'
+#python preprocessing_view.py --split='train'

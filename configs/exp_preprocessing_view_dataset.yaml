@@ -9,7 +9,7 @@ NAVI:
 
 PRED:
   VIEW:
-    NUM_PROCESS: 3
+    NUM_PROCESS: 24
     multiprocessing: 'mp'
     PROCESSED_VIEW_SAVED_FOLDER: 'output/training_preprocessed_view_1000samples'
     GEN_SAMPLES_SAVED_FOLDER: 'output/training_data_input_view_1000samples'

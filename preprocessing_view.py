@@ -32,7 +32,12 @@ class preprocessing_view():
         self.floor_id = floor_id
 
         self.data_folder = data_folder
-        self.saved_folder = saved_folder
+
+        # ============= create scene folder =============
+        scene_folder = f'{saved_folder}/{self.scene_name}_{self.floor_id}'
+        if not os.path.exists(scene_folder):
+            os.mkdir(scene_folder)
+        self.scene_folder = scene_folder
 
         self.hm3d_to_lvis_dict = hm3d_to_lvis_dict
         self.LVIS_dict = LVIS_dict
@@ -405,7 +410,7 @@ class preprocessing_view():
                 #print(f'mat.shape = {mat_dist_view_to_cat[fron_idx].shape}')
 
                 sample_name = str(count_view).zfill(5)
-                with bz2.BZ2File(f'{self.saved_folder}/{sample_name}.pbz2', 'w') as fp:
+                with bz2.BZ2File(f'{self.scene_folder}/{sample_name}.pbz2', 'w') as fp:
                     cPickle.dump(
                         fron_data,
                         fp

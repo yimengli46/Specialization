@@ -12,6 +12,18 @@ import os
 import glob
 import torch
 import torch.nn.functional as F
+from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize, InterpolationMode
+from PIL import Image
+
+
+def _transform(n_px):
+    return Compose([
+        Resize(n_px, interpolation=InterpolationMode.BICUBIC),
+        CenterCrop(n_px),
+        ToTensor(),
+        Normalize((0.48145466, 0.4578275, 0.40821073),
+                  (0.26862954, 0.26130258, 0.27577711)),
+    ])
 
 
 class view_dataset(data.Dataset):
@@ -63,6 +75,8 @@ class view_dataset(data.Dataset):
                 self.ignored_category_id_set.add(k)
                 # print(f'class {v} is not a goal object.')
 
+        self.preprocess = _transform(224)
+
     def __len__(self):
         return len(self.sample_name_list)
 
@@ -88,8 +102,10 @@ class view_dataset(data.Dataset):
         #print(f'goal_category = {goal_category}')
 
         # ======================= prepare the return =================
-        tensor_rgb = torch.tensor(fron['rgb']).float().permute(2, 0, 1)
-        assert tensor_rgb.shape[1] == cfg.SENSOR.OBS_WIDTH
+        # tensor_rgb = torch.tensor(fron['rgb']).float().permute(2, 0, 1)
+        # assert tensor_rgb.shape[1] == cfg.SENSOR.OBS_WIDTH
+        rgb_img = Image.fromarray(fron['rgb'])
+        tensor_rgb = self.preprocess(rgb_img)
         goal_obj = goal_category
 
         # compute dist

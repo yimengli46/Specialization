@@ -1,7 +1,7 @@
 import torch.optim as optim
 import os
 import numpy as np
-from modeling.utils.ResNet import resnet, context_matrix, knowledge_graph
+from modeling.utils.ResNet import resnet, context_matrix, knowledge_graph, clip_fc
 from sseg_utils.saver import Saver
 from sseg_utils.summaries import TensorboardSummary
 import matplotlib.pyplot as plt
@@ -27,6 +27,9 @@ def train(model_type):
     elif model_type == 'context_matrix':
         cfg.merge_from_file(
             'configs/exp_train_input_view_model_context_matrix.yaml')
+    elif model_type == 'clip':
+        cfg.merge_from_file(
+            'configs/exp_train_input_view_model_clip.yaml')
     else:
         raise NotImplementedError("This model is not implemented.")
     cfg.freeze()
@@ -97,6 +100,8 @@ def train(model_type):
     elif cfg.PRED.VIEW.MODEL_TYPE == 'knowledge_graph':
         model = knowledge_graph(lvis_cat_synonyms_list, lvis_cat_synonyms_embedding,
                                 goal_obj_index_list, goal_obj_index_embeddings)
+    elif cfg.PRED.VIEW.MODEL_TYPE == 'clip':
+        model = clip_fc()
     model = nn.DataParallel(model)
     model = model.cuda()
 
@@ -149,6 +154,8 @@ def train(model_type):
                 output = model(bbox_list, goal_objs)
             elif cfg.PRED.VIEW.MODEL_TYPE == 'knowledge_graph':
                 output = model(bbox_list, goal_objs)
+            elif cfg.PRED.VIEW.MODEL_TYPE == 'clip':
+                output = model(images, goal_objs)  # batchsize x 1 x H x W
             print(f'output.shape = {output.shape}')
             #print(f'output = {output}')
             #print(f'dists = {dists}')
@@ -198,6 +205,9 @@ def train(model_type):
                         output = model(bbox_list, goal_objs)
                     elif cfg.PRED.VIEW.MODEL_TYPE == 'knowledge_graph':
                         output = model(bbox_list, goal_objs)
+                    elif cfg.PRED.VIEW.MODEL_TYPE == 'clip':
+                        # batchsize x 1 x H x W
+                        output = model(images, goal_objs)
                 #print(f'output.shape = {output.shape}')
                 loss = criterion(output, dists)
 

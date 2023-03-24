@@ -7,6 +7,7 @@ import bz2
 import _pickle as cPickle
 import scipy.sparse as sp
 import torch.nn.functional as F
+import clip
 
 
 class resnet(nn.Module):
@@ -193,6 +194,36 @@ class knowledge_graph(nn.Module):
 
         z = torch.cat((x, target_embedding), dim=1)
 
+        y_pred = self.fc2(z)
+
+        return y_pred
+
+
+class clip_fc(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        self.model, self.preprocess = clip.load("ViT-B/32", device="cuda")
+
+        self.fc1 = nn.Linear(1024, 256)
+        self.fc2 = nn.Linear(256, 2)
+
+    def forward(self, image, target_obj_list):
+        #image = self.preprocess(image).cuda()
+        text = clip.tokenize(target_obj_list).cuda()
+        #print(f'image.shape = {image.shape}')
+        #print(f'text.shape = {text.shape}')
+
+        with torch.no_grad():
+            image_features = self.model.encode_image(image).float()
+            text_features = self.model.encode_text(text).float()
+
+        #print(f'image_features.shape = {image_features.shape}')
+        #print(f'text_features.shape = {text_features.shape}')
+        z = torch.cat((image_features, text_features), dim=1)
+        #print(f'z.shape = {z.shape}')
+        z = self.fc1(z)
+        z = F.relu(z)
         y_pred = self.fc2(z)
 
         return y_pred

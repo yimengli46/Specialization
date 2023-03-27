@@ -27,7 +27,8 @@ class resnet(nn.Module):
         self.resnet.conv1 = nn.Conv2d(
             n_channel_in, 64, kernel_size=3, stride=1, padding=1, bias=False
         )
-        self.fc = nn.Linear(256 + 384, 2)
+        self.fc1 = nn.Linear(256 + 384, 256)
+        self.fc2 = nn.Linear(256, 2)
 
         self.lvis_cat_synonyms_list = lvis_cat_synonyms_list
         self.lvis_cat_synonyms_embedding = lvis_cat_synonyms_embedding
@@ -37,19 +38,20 @@ class resnet(nn.Module):
 
     def forward(self, x, target_obj_list):
         z = self.resnet(x)  # B x 256
-        #print(f'z.shape = {z.shape}')
+        # print(f'z.shape = {z.shape}')
 
         # encode the target
         target_embedding = np.stack([self.lvis_cat_synonyms_embedding[self.lvis_cat_synonyms_list.index(
             target_obj)] for target_obj in target_obj_list])  # B x 384
         target_embedding = torch.tensor(
             target_embedding).float().cuda()  # B x 384
-        #print(f'target_embedding.shape = {target_embedding.shape}')
+        # print(f'target_embedding.shape = {target_embedding.shape}')
 
         z = torch.cat((z, target_embedding), dim=1)
 
-        y_pred = self.fc(z)
-        #print(f'y_pred.shape = {y_pred.shape}')
+        z = F.relu(self.fc1(z))
+        y_pred = self.fc2(z)
+        # print(f'y_pred.shape = {y_pred.shape}')
         return y_pred
 
 
@@ -65,9 +67,9 @@ class context_matrix(nn.Module):
             goal_obj_index_embeddings).float().unsqueeze(0).detach()  # 1 x 310 x 384
         self.goal_obj_index_list = goal_obj_index_list
 
-        self.fc1 = nn.Linear(310 * 5, 256)
-        self.fc2 = nn.Linear(256 + 384, 2)
-        #self.sigmoid = nn.Sigmoid()
+        self.fc_cm = nn.Linear(310 * 5, 256)
+        self.fc1 = nn.Linear(256 + 384, 256)
+        self.fc2 = nn.Linear(256, 2)
 
     def forward(self, objbb_list, target_obj_list):
         objstate = torch.zeros(len(objbb_list), self.n, 4).float()
@@ -105,10 +107,11 @@ class context_matrix(nn.Module):
         x = objstate.view(B, -1).cuda()
         #print(f'x.shape = {x.shape}')
 
-        z = self.fc1(x)
+        z = F.relu(self.fc_cm(x))
         target_embedding = target_embedding.squeeze(1).cuda()
         z = torch.cat((z, target_embedding), dim=1)
 
+        z = F.relu(self.fc1(z))
         y_pred = self.fc2(z)
         return y_pred
 
@@ -154,9 +157,9 @@ class knowledge_graph(nn.Module):
         self.W1 = nn.Linear(256, 256, bias=False)
         self.W2 = nn.Linear(256, 1, bias=False)
 
-        self.fc1 = nn.Linear(self.n, 256)
-        self.fc2 = nn.Linear(256 + 384, 2)
-        #self.sigmoid = nn.Sigmoid()
+        self.fc_kg = nn.Linear(self.n, 256)
+        self.fc1 = nn.Linear(256 + 384, 256)
+        self.fc2 = nn.Linear(256, 2)
 
     def forward(self, objbb_list, target_obj_list):
         B = len(objbb_list)
@@ -184,7 +187,7 @@ class knowledge_graph(nn.Module):
         #print(f'x.shape = {x.shape}')
         x = x.view(B, self.n)  # B x 310
         #print(f'x.shape = {x.shape}')
-        x = self.fc1(x)  # B x 256
+        x = F.relu(self.fc_kg(x))  # B x 256
         #print(f'x.shape = {x.shape}')
 
         target_embedding = np.stack([self.lvis_cat_synonyms_embedding[self.lvis_cat_synonyms_list.index(
@@ -194,6 +197,7 @@ class knowledge_graph(nn.Module):
 
         z = torch.cat((x, target_embedding), dim=1)
 
+        z = F.relu(self.fc1(z))
         y_pred = self.fc2(z)
 
         return y_pred
@@ -222,8 +226,7 @@ class clip_fc(nn.Module):
         #print(f'text_features.shape = {text_features.shape}')
         z = torch.cat((image_features, text_features), dim=1)
         #print(f'z.shape = {z.shape}')
-        z = self.fc1(z)
-        z = F.relu(z)
+        z = F.relu(self.fc1(z))
         y_pred = self.fc2(z)
 
         return y_pred

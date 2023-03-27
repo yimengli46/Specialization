@@ -159,6 +159,9 @@ def train(model_type):
             print(f'output.shape = {output.shape}')
             #print(f'output = {output}')
             #print(f'dists = {dists}')
+            output = output.view(-1, 2)
+            dists = dists.view(-1)
+
             loss = criterion(output, dists)
 
             # ================================================= compute gradient =================================================
@@ -209,6 +212,9 @@ def train(model_type):
                         # batchsize x 1 x H x W
                         output = model(images, goal_objs)
                 #print(f'output.shape = {output.shape}')
+                B, C = output.shape[:2]
+                output = output.view(-1, 2)
+                dists = dists.view(-1)
                 loss = criterion(output, dists)
 
                 # concatenate the results

@@ -190,12 +190,21 @@ class knowledge_graph(nn.Module):
         x = F.relu(self.fc_kg(x))  # B x 256
         #print(f'x.shape = {x.shape}')
 
-        target_embedding = np.stack([self.lvis_cat_synonyms_embedding[self.lvis_cat_synonyms_list.index(
-            target_obj)] for target_obj in target_obj_list])  # B x 384
+        target_embedding = np.zeros((B, 310, 384), dtype=np.float32)
+        for idx0, target_obj in enumerate(target_obj_list):
+            for idx1, target in enumerate(target_obj):
+                target_embedding[idx0, idx1] = self.lvis_cat_synonyms_embedding[self.lvis_cat_synonyms_list.index(
+                    target)]
         target_embedding = torch.tensor(
-            target_embedding).float().cuda()  # B x 384
+            target_embedding).float().cuda()  # B x 310 x 384
 
-        z = torch.cat((x, target_embedding), dim=1)
+        # target_embedding = np.stack([np.stack([self.lvis_cat_synonyms_embedding[self.lvis_cat_synonyms_list.index(
+        #     target_obj)] for target_obj in target_obj_list]) for target_obj_list in target_obj_list_list])  # B x 384
+        # target_embedding = torch.tensor(
+        #     target_embedding).float().cuda()  # B x 384
+
+        x = x.view(B, 1, -1)
+        z = torch.cat((x.expand(B, 310, 256), target_embedding), dim=2)
 
         z = F.relu(self.fc1(z))
         y_pred = self.fc2(z)

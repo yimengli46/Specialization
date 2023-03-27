@@ -26,6 +26,26 @@ def _transform(n_px):
     ])
 
 
+def process_lvis_dict(hm3d_to_lvis_dict, LVIS_dict):
+    goal_obj_list = sorted(list(set(hm3d_to_lvis_dict.values())))  # size: 351
+
+    goal_obj_index_list = list(set(LVIS_dict['rowid2catid_dict'][LVIS_dict['cat_synonyms'].index(
+        cat_syn)] for cat_syn in goal_obj_list))  # size: 310
+
+    lvis_cat_name_to_lvis_id_dict = {cat_syn: LVIS_dict['rowid2catid_dict'][LVIS_dict['cat_synonyms'].index(
+        cat_syn)] for cat_syn in goal_obj_list}
+
+    lvis_id_to_lvis_cat_names_dict = {}
+    for cat_syn in goal_obj_list:
+        lvis_id = LVIS_dict['rowid2catid_dict'][LVIS_dict['cat_synonyms'].index(
+            cat_syn)]
+        if lvis_id in lvis_id_to_lvis_cat_names_dict:
+            lvis_id_to_lvis_cat_names_dict[lvis_id].append(cat_syn)
+        else:
+            lvis_id_to_lvis_cat_names_dict[lvis_id] = [cat_syn]
+    return goal_obj_list, goal_obj_index_list, lvis_cat_name_to_lvis_id_dict, lvis_id_to_lvis_cat_names_dict
+
+
 class view_dataset(data.Dataset):
 
     def __init__(self, split, scene_name, floor_id=0, data_folder='', hm3d_to_lvis_dict=None,
@@ -41,10 +61,13 @@ class view_dataset(data.Dataset):
         self.hm3d_to_lvis_dict = hm3d_to_lvis_dict
         self.LVIS_dict = LVIS_dict
 
-        goal_obj_list = sorted(
-            list(set(hm3d_to_lvis_dict.values())))  # size: 351
-        self.goal_obj_index_list = list(set(self.LVIS_dict['rowid2catid_dict'][self.LVIS_dict['cat_synonyms'].index(
-            cat_syn)] for cat_syn in goal_obj_list))  # size: 310
+        # goal_obj_list = sorted(
+        #     list(set(hm3d_to_lvis_dict.values())))  # size: 351
+        # self.goal_obj_index_list = list(set(self.LVIS_dict['rowid2catid_dict'][self.LVIS_dict['cat_synonyms'].index(
+        #     cat_syn)] for cat_syn in goal_obj_list))  # size: 310
+
+        self.goal_obj_list, self.goal_obj_index_list, self.lvis_cat_name_to_lvis_id_dict, self.lvis_id_to_lvis_cat_names_dict = process_lvis_dict(
+            hm3d_to_lvis_dict, LVIS_dict)
 
         print(
             f'start dataset on scene {self.scene_name} floor {self.floor_id} =>')
@@ -93,11 +116,10 @@ class view_dataset(data.Dataset):
         # mat_dist[mask_reachable] = 1
         # mat_dist[~mask_reachable] = 0
 
-        # initialize a location
-        goal_category = random.choice(
-            list(self.goal_category_set))  # 'toy'
-        goal_category_index = self.LVIS_dict['rowid2catid_dict'][self.LVIS_dict['cat_synonyms'].index(
-            goal_category)]
+        # goal_category = random.choice(
+        #     list(self.goal_category_set))  # 'toy'
+        # goal_category_index = self.LVIS_dict['rowid2catid_dict'][self.LVIS_dict['cat_synonyms'].index(
+        #     goal_category)]
         #goal_category = 'toy'
         #print(f'goal_category = {goal_category}')
 
@@ -106,18 +128,23 @@ class view_dataset(data.Dataset):
         # assert tensor_rgb.shape[1] == cfg.SENSOR.OBS_WIDTH
         rgb_img = Image.fromarray(fron['rgb'])
         tensor_rgb = self.preprocess(rgb_img)
-        goal_obj = goal_category
+        #goal_obj = goal_category
+        goal_obj = []
+        for goal_obj_index in self.goal_obj_index_list:
+            synonyms = self.lvis_id_to_lvis_cat_names_dict[goal_obj_index]
+            goal_obj.append(random.choice(synonyms))
 
         # compute dist
         mat_dist = fron['mat_dist_to_cat']
-        dist = mat_dist[self.goal_obj_index_list.index(
-            goal_category_index)]
-        if dist > cfg.NAVI.MAXIMUM_DIST_TO_OBJ_GOAL - 1:
-            dist = 0
-        else:
-            dist = 1
+        # dist = mat_dist[self.goal_obj_index_list.index(
+        #     goal_category_index)]
+        # if dist > cfg.NAVI.MAXIMUM_DIST_TO_OBJ_GOAL - 1:
+        #     dist = 0
+        # else:
+        #     dist = 1
+        dist = (mat_dist < cfg.NAVI.MAXIMUM_DIST_TO_OBJ_GOAL)
         #print(f'dist = {dist}')
-        tensor_dist = torch.tensor(dist)
+        tensor_dist = torch.tensor(dist).long()
         #print(f'tensor_dist = {tensor_dist}')
 
         # compute the bbox

@@ -6,7 +6,7 @@ PRED:
     MODEL_TYPE: 'context_matrix'
     BATCH_SIZE: 3
     DEVICE: cuda
-    EPOCHS: 4
+    EPOCHS: 6
     EVAL_INTERVAL: 1
     FLAG_VISUALIZE_PRED_LABELS: False
     LOSS_TYPE: L1

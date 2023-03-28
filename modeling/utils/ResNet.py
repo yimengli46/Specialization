@@ -37,17 +37,30 @@ class resnet(nn.Module):
         self.goal_obj_index_list = goal_obj_index_list
 
     def forward(self, x, target_obj_list):
-        z = self.resnet(x)  # B x 256
+        B = x.shape[0]
+
+        x = self.resnet(x)  # B x 256
         # print(f'z.shape = {z.shape}')
 
-        # encode the target
-        target_embedding = np.stack([self.lvis_cat_synonyms_embedding[self.lvis_cat_synonyms_list.index(
-            target_obj)] for target_obj in target_obj_list])  # B x 384
+        target_embedding = np.zeros((B, 310, 384), dtype=np.float32)
+        for idx0, target_obj in enumerate(target_obj_list):
+            for idx1, target in enumerate(target_obj):
+                target_embedding[idx0, idx1] = self.lvis_cat_synonyms_embedding[self.lvis_cat_synonyms_list.index(
+                    target)]
         target_embedding = torch.tensor(
-            target_embedding).float().cuda()  # B x 384
+            target_embedding).float().cuda()  # B x 310 x 384
+
+        # encode the target
+        # target_embedding = np.stack([self.lvis_cat_synonyms_embedding[self.lvis_cat_synonyms_list.index(
+        #     target_obj)] for target_obj in target_obj_list])  # B x 384
+        # target_embedding = torch.tensor(
+        #     target_embedding).float().cuda()  # B x 384
         # print(f'target_embedding.shape = {target_embedding.shape}')
 
-        z = torch.cat((z, target_embedding), dim=1)
+        #z = torch.cat((z, target_embedding), dim=1)
+
+        x = x.view(B, 1, -1)
+        z = torch.cat((x.expand(B, 310, 256), target_embedding), dim=2)
 
         z = F.relu(self.fc1(z))
         y_pred = self.fc2(z)

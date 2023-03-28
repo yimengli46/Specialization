@@ -14,6 +14,30 @@ import bz2
 import _pickle as cPickle
 import argparse
 from sklearn.metrics import f1_score
+import random
+
+
+def gen_plot(y_pred, y_label):
+    """Create a pyplot plot and save to buffer."""
+    fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(12, 2))
+
+    y_pred = (np.array(y_pred).flatten() > 0.5)
+    y_label = np.array(y_label).flatten()
+    acc = (y_pred == y_label).mean()
+    f1 = f1_score(y_label, y_pred, average='weighted')
+
+    y_pred = np.reshape(y_pred, (-1, 310))
+    y_label = np.reshape(y_label, (-1, 310))
+
+    ax[0].imshow(y_pred)
+    ax[0].set_title(f'pred, acc = {acc:.2}, f1 = {f1:.2}')
+    ax[1].imshow(y_label)
+    ax[1].set_title('label')
+    #buf = io.BytesIO()
+    #plt.savefig(buf, format='png')
+    # buf.seek(0)
+    fig.tight_layout()
+    return fig  # buf
 
 
 def train(model_type):
@@ -189,7 +213,10 @@ def train(model_type):
 
             y_pred = []
             y_label = []
-            for batch in dataloader_val:
+
+            sampled_batch_id = random.choice(range(len(dataloader_val)))
+
+            for idx_dl, batch in enumerate(dataloader_val):
                 print('epoch = {}, iter_num = {}'.format(epoch, iter_num))
                 images, bbox_list, goal_objs, dists = batch['rgb'], batch[
                     'bbox'], batch['goal_obj'], batch['dist']
@@ -211,15 +238,23 @@ def train(model_type):
                     elif cfg.PRED.VIEW.MODEL_TYPE == 'clip':
                         # batchsize x 1 x H x W
                         output = model(images, goal_objs)
-                #print(f'output.shape = {output.shape}')
+                print(f'output.shape = {output.shape}')
                 B, C = output.shape[:2]
                 output = output.view(-1, 2)
                 dists = dists.view(-1)
                 loss = criterion(output, dists)
 
                 # concatenate the results
-                y_pred += output.argmax(dim=1).cpu().tolist()
-                y_label += dists.cpu().tolist()
+                output = output.argmax(dim=1).cpu().tolist()
+                dists = dists.cpu().tolist()
+                y_pred += output
+                y_label += dists
+
+                if idx_dl == sampled_batch_id:
+                    output = np.array(output)
+                    dists = np.array(dists)
+                    fig = gen_plot(output, dists)
+                    writer.add_figure('val/sampled_result', fig)
 
                 test_loss += loss.item()
                 print('Test loss: %.3f' % (test_loss / (iter_num + 1)))

@@ -15,6 +15,7 @@ import _pickle as cPickle
 import argparse
 from sklearn.metrics import f1_score
 import random
+import torch.nn.functional as F
 
 
 def gen_plot(y_pred, y_label):
@@ -38,6 +39,29 @@ def gen_plot(y_pred, y_label):
     # buf.seek(0)
     fig.tight_layout()
     return fig  # buf
+
+
+def focal_loss(x, y):
+    '''Focal loss.
+
+    Args:
+        x: (tensor) sized [N,D].
+        y: (tensor) sized [N,].
+
+    Return:
+        (tensor) focal loss.
+    '''
+    alpha = 0.25
+    gamma = 2
+
+    t = F.one_hot(y, num_classes=2)
+    #print(f't = {t}')
+
+    p = x.sigmoid()
+    pt = p * t + (1 - p) * (1 - t)         # pt = p if t > 0 else 1-p
+    w = alpha * t + (1 - alpha) * (1 - t)  # w = alpha if t > 0 else 1-alpha
+    w = w * (1 - pt).pow(gamma)
+    return F.binary_cross_entropy_with_logits(x, t.float(), w.detach(), size_average=False)
 
 
 def train(model_type):
@@ -139,8 +163,8 @@ def train(model_type):
     # whether to use class balanced weights
     weight = None
     #criterion = nn.L1Loss()
-    criterion = nn.CrossEntropyLoss(
-        weight=torch.tensor([1, 50]).float()).cuda()
+    # criterion = nn.CrossEntropyLoss(
+    #     weight=torch.tensor([1, 50]).float()).cuda()
     best_test_loss = 1e10
 
     # ===================================================== Resuming checkpoint ====================================================
@@ -186,7 +210,7 @@ def train(model_type):
             output = output.view(-1, 2)
             dists = dists.view(-1)
 
-            loss = criterion(output, dists)
+            loss = focal_loss(output, dists)
 
             # ================================================= compute gradient =================================================
             optimizer.zero_grad()
@@ -242,7 +266,7 @@ def train(model_type):
                 B, C = output.shape[:2]
                 output = output.view(-1, 2)
                 dists = dists.view(-1)
-                loss = criterion(output, dists)
+                loss = focal_loss(output, dists)
 
                 # concatenate the results
                 output = output.argmax(dim=1).cpu().tolist()

@@ -22,13 +22,17 @@ def gen_plot(y_pred, y_label):
     """Create a pyplot plot and save to buffer."""
     fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(12, 2))
 
-    y_pred = (np.array(y_pred).flatten() > 0.5)
+    y_pred = (np.array(y_pred).flatten() > 0)
     y_label = np.array(y_label).flatten()
     acc = (y_pred == y_label).mean()
     f1 = f1_score(y_label, y_pred, average='weighted')
 
     y_pred = np.reshape(y_pred, (-1, 310))
     y_label = np.reshape(y_label, (-1, 310))
+
+    idx0 = random.choice((range(y_pred.shape[0])))
+    y_pred = np.reshape(y_pred[idx0], (1, -1))
+    y_label = np.reshape(y_label[idx0], (1, -1))
 
     ax[0].imshow(y_pred)
     ax[0].set_title(f'pred, acc = {acc:.2}, f1 = {f1:.2}')
@@ -54,14 +58,14 @@ def focal_loss(x, y):
     alpha = 0.25
     gamma = 2
 
-    t = F.one_hot(y, num_classes=2)
+    t = y  # F.one_hot(y, num_classes=2)
     #print(f't = {t}')
 
     p = x.sigmoid()
     pt = p * t + (1 - p) * (1 - t)         # pt = p if t > 0 else 1-p
     w = alpha * t + (1 - alpha) * (1 - t)  # w = alpha if t > 0 else 1-alpha
     w = w * (1 - pt).pow(gamma)
-    return F.binary_cross_entropy_with_logits(x, t.float(), w.detach(), size_average=False)
+    return F.binary_cross_entropy_with_logits(x, t.float(), w.detach(), reduction='sum')
 
 
 def train(model_type):
@@ -207,7 +211,7 @@ def train(model_type):
             print(f'output.shape = {output.shape}')
             #print(f'output = {output}')
             #print(f'dists = {dists}')
-            output = output.view(-1, 2)
+            output = output.view(-1)
             dists = dists.view(-1)
 
             loss = focal_loss(output, dists)
@@ -238,7 +242,9 @@ def train(model_type):
             y_pred = []
             y_label = []
 
-            sampled_batch_id = random.choice(range(len(dataloader_val)))
+            sampled_batch_ids = random.choices(
+                range(len(dataloader_val)), k=10)
+            count_vis_img = 0
 
             for idx_dl, batch in enumerate(dataloader_val):
                 print('epoch = {}, iter_num = {}'.format(epoch, iter_num))
@@ -264,21 +270,23 @@ def train(model_type):
                         output = model(images, goal_objs)
                 print(f'output.shape = {output.shape}')
                 B, C = output.shape[:2]
-                output = output.view(-1, 2)
+                output = output.view(-1)
                 dists = dists.view(-1)
                 loss = focal_loss(output, dists)
 
                 # concatenate the results
-                output = output.argmax(dim=1).cpu().tolist()
+                output = (output > 0).cpu().tolist()
                 dists = dists.cpu().tolist()
                 y_pred += output
                 y_label += dists
 
-                if idx_dl == sampled_batch_id:
+                if idx_dl in sampled_batch_ids:
                     output = np.array(output)
                     dists = np.array(dists)
                     fig = gen_plot(output, dists)
-                    writer.add_figure('val/sampled_result', fig)
+                    writer.add_figure(
+                        f'val/sampled_result_{count_vis_img}', fig)
+                    count_vis_img += 1
 
                 test_loss += loss.item()
                 print('Test loss: %.3f' % (test_loss / (iter_num + 1)))
@@ -291,7 +299,7 @@ def train(model_type):
             writer.add_scalar('val/total_loss_epoch', test_loss, epoch)
 
             # compuate acc
-            y_pred = (np.array(y_pred).flatten() > 0.5)
+            y_pred = (np.array(y_pred).flatten() > 0)
             y_label = np.array(y_label).flatten()
             acc = (y_pred == y_label).mean()
             f1 = f1_score(y_label, y_pred, average='weighted')

@@ -28,7 +28,7 @@ class resnet(nn.Module):
             n_channel_in, 64, kernel_size=3, stride=1, padding=1, bias=False
         )
         self.fc1 = nn.Linear(256 + 384, 256)
-        self.fc2 = nn.Linear(256, 2)
+        self.fc2 = nn.Linear(256, 1)
 
         self.lvis_cat_synonyms_list = lvis_cat_synonyms_list
         self.lvis_cat_synonyms_embedding = lvis_cat_synonyms_embedding
@@ -172,7 +172,7 @@ class knowledge_graph(nn.Module):
 
         self.fc_kg = nn.Linear(self.n, 256)
         self.fc1 = nn.Linear(256 + 384, 256)
-        self.fc2 = nn.Linear(256, 2)
+        self.fc2 = nn.Linear(256, 1)
 
     def forward(self, objbb_list, target_obj_list):
         B = len(objbb_list)

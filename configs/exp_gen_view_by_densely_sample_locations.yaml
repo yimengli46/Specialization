@@ -1,0 +1,28 @@
+NAVI:
+  GT_OCC_MAP_TYPE: 'NAV_MESH'
+  HFOV: 90
+  FLAG_VISUALIZE_MIDDLE_TRAJ: False
+
+PRED:
+  VIEW:
+    DIVIDE_AREA: 100
+    INPUT: depth_and_sem
+    NUM_GENERATED_SAMPLES_PER_SCENE: 23
+    NUM_PROCESS: 1
+    multiprocessing: 'single'
+    GEN_SAMPLES_SAVED_FOLDER: 'output/training_data_input_view_by_densely_sample_locations'
+    EPS_SAVE_GAP: 20
+    FLAG_VIS_FRONTIER_ON_MAP: True
+
+
+SAVE:
+  TESTING_RESULTS_FOLDER: ''
+
+SEM_MAP:
+  CELL_SIZE: 0.05
+  GRID_CLASS_SIZE: 250
+  VIS_ENLARGE_RATIO: 1
+  FLAG_VISUALIZE_EGO_OBS: False
+
+SENSOR:
+  OBS_WIDTH: 512

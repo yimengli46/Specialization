@@ -38,8 +38,8 @@ def gen_plot(y_pred, y_label):
     ax[0].set_title(f'pred, acc = {acc:.2}, f1 = {f1:.2}')
     ax[1].imshow(y_label)
     ax[1].set_title('label')
-    #buf = io.BytesIO()
-    #plt.savefig(buf, format='png')
+    # buf = io.BytesIO()
+    # plt.savefig(buf, format='png')
     # buf.seek(0)
     fig.tight_layout()
     return fig  # buf
@@ -59,13 +59,13 @@ def focal_loss(x, y):
     gamma = 2
 
     t = y  # F.one_hot(y, num_classes=2)
-    #print(f't = {t}')
+    # print(f't = {t}')
 
     p = x.sigmoid()
     pt = p * t + (1 - p) * (1 - t)         # pt = p if t > 0 else 1-p
     w = alpha * t + (1 - alpha) * (1 - t)  # w = alpha if t > 0 else 1-alpha
     w = w * (1 - pt).pow(gamma)
-    return F.binary_cross_entropy_with_logits(x, t.float(), w.detach(), reduction='sum')
+    return F.binary_cross_entropy_with_logits(x, t.float(), w.detach(), reduction='mean')
 
 
 def train(model_type):
@@ -166,7 +166,7 @@ def train(model_type):
     # Define Criterion
     # whether to use class balanced weights
     weight = None
-    #criterion = nn.L1Loss()
+    # criterion = nn.L1Loss()
     # criterion = nn.CrossEntropyLoss(
     #     weight=torch.tensor([1, 50]).float()).cuda()
     best_test_loss = 1e10
@@ -209,8 +209,8 @@ def train(model_type):
             elif cfg.PRED.VIEW.MODEL_TYPE == 'clip':
                 output = model(images, goal_objs)  # batchsize x 1 x H x W
             print(f'output.shape = {output.shape}')
-            #print(f'output = {output}')
-            #print(f'dists = {dists}')
+            # print(f'output = {output}')
+            # print(f'dists = {dists}')
             output = output.view(-1)
             dists = dists.view(-1)
 
@@ -301,8 +301,10 @@ def train(model_type):
             # compuate acc
             y_pred = (np.array(y_pred).flatten() > 0)
             y_label = np.array(y_label).flatten()
-            acc = (y_pred == y_label).mean()
-            f1 = f1_score(y_label, y_pred, average='weighted')
+            # print(f'y_pred.shape = {y_pred.shape}')
+            acc = (y_pred.reshape(-1, 310) ==
+                   y_label.reshape(-1, 310)).mean(axis=0).mean()
+            f1 = f1_score(y_label, y_pred, average='macro')
             writer.add_scalar('val/acc_epoch', acc, epoch)
             writer.add_scalar('val/f1_score', f1, epoch)
 

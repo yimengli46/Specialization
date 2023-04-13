@@ -54,7 +54,7 @@ class SemanticMap:
         self.scene_name = scene_name
         self.cell_size = cfg.SEM_MAP.CELL_SIZE
         self.detector = cfg.NAVI.DETECTOR
-        #self.panop_pred = PanopPred()
+        # self.panop_pred = PanopPred()
         self.pose_range = pose_range
         self.coords_range = coords_range
         self.WH = WH
@@ -76,7 +76,7 @@ class SemanticMap:
             gt_occupancy_map = np.where(gt_occupancy_map == 0, cfg.FE.COLLISION_VAL,
                                         gt_occupancy_map)  # occupied cell
         self.gt_occupancy_map = gt_occupancy_map
-        print(f'self.gt_occupancy_map.shape = {self.gt_occupancy_map.shape}')
+        # print(f'self.gt_occupancy_map.shape = {self.gt_occupancy_map.shape}')
 
         # ==================================== initialize 4d grid =================================
         self.min_X = -cfg.SEM_MAP.WORLD_SIZE
@@ -93,16 +93,16 @@ class SemanticMap:
         self.THRESHOLD_LOW = 5  # refers to index of bin height 0.2m
         self.THRESHOLD_HIGH = len(self.y_grid)
 
-        print(f'y_grid = {self.y_grid}')
-        print(f'len(y_grid) = {len(self.y_grid)}')
-        print(
-            f'thresh_low = {self.THRESHOLD_LOW}, thresh_high = {self.THRESHOLD_HIGH}')
+        # print(f'y_grid = {self.y_grid}')
+        # print(f'len(y_grid) = {len(self.y_grid)}')
+        # print(
+        #     f'thresh_low = {self.THRESHOLD_LOW}, thresh_high = {self.THRESHOLD_HIGH}')
 
         self.four_dim_grid = np.zeros(
             (len(self.z_grid), len(self.y_grid)+1,
              len(self.x_grid), cfg.SEM_MAP.GRID_CLASS_SIZE),
             dtype=np.int16)  # x, y, z, C
-        print(f'self.four_dim_grid.shape = {self.four_dim_grid.shape}')
+        # print(f'self.four_dim_grid.shape = {self.four_dim_grid.shape}')
 
         # ============================================
         self.H, self.W = len(self.z_grid), len(self.x_grid)
@@ -119,7 +119,7 @@ class SemanticMap:
             # load rgb image, depth and sseg
             rgb_img = obs['rgb']
             depth_img = obs['depth'][:, :, 0]
-            #print(f'depth_img.shape = {depth_img.shape}')
+            # print(f'depth_img.shape = {depth_img.shape}')
             InsSeg_img = obs["semantic"]
             sseg_img = convertInsSegToSSeg(InsSeg_img, self.ins2cat_dict)
             sem_map_pose = (pose[0], -pose[1], -pose[2])  # x, z, theta
@@ -127,7 +127,7 @@ class SemanticMap:
             agent_coords = pose_to_coords(
                 sem_map_pose, self.pose_range, self.coords_range, self.WH)
 
-            #print('pose = {}'.format(pose))
+            # print('pose = {}'.format(pose))
             rgb_lst.append(rgb_img)
             depth_lst.append(depth_img)
             sseg_lst.append(sseg_img)
@@ -181,8 +181,8 @@ class SemanticMap:
                     theta_x=0.,
                     ignored_classes=self.IGNORED_CLASS)
 
-            #print(f'xyz_points.shape = {xyz_points.shape}')
-            #print(f'sseg_points.shape = {sseg_points.shape}')
+            # print(f'xyz_points.shape = {xyz_points.shape}')
+            # print(f'sseg_points.shape = {sseg_points.shape}')
 
             mask_X = np.logical_and(xyz_points[0, :] > self.min_X,
                                     xyz_points[0, :] < self.max_X)
@@ -223,7 +223,7 @@ class SemanticMap:
         observed_area_flag = smaller_four_dim_grid.sum(axis=(1, 3)) > 0
         cells_in_occupied_range = smaller_four_dim_grid[:, self.THRESHOLD_LOW:self.THRESHOLD_HIGH, :].sum(
             axis=(1, 3))
-        #print(f'cells_in_occupied_range.shape = {cells_in_occupied_range.shape}')
+        # print(f'cells_in_occupied_range.shape = {cells_in_occupied_range.shape}')
         occupancy_map = np.zeros(observed_area_flag.shape, dtype=np.int16)
         occupancy_map[observed_area_flag == False] = cfg.FE.UNOBSERVED_VAL
         mask_occupied = np.logical_and(cells_in_occupied_range >= cfg.SEM_MAP.POINTS_CNT,
@@ -284,7 +284,7 @@ class SemanticMap:
             observed_area_flag = smaller_four_dim_grid.sum(axis=(1, 3)) > 0
             cells_in_occupied_range = smaller_four_dim_grid[:, self.THRESHOLD_LOW:self.THRESHOLD_HIGH, :].sum(
                 axis=(1, 3))
-            #print(f'cells_in_occupied_range.shape = {cells_in_occupied_range.shape}')
+            # print(f'cells_in_occupied_range.shape = {cells_in_occupied_range.shape}')
             occupancy_map = np.zeros(observed_area_flag.shape, dtype=np.int16)
             occupancy_map[observed_area_flag == False] = cfg.FE.UNOBSERVED_VAL
             mask_occupied = np.logical_and(cells_in_occupied_range >= cfg.SEM_MAP.POINTS_CNT,

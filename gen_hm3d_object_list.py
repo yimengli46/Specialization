@@ -53,7 +53,7 @@ for scene_idx in range(len(list_scene_idx)):
                 i_second_quotes = line.find('"', i_first_quotes+1)
                 word = line[i_first_quotes+1:i_second_quotes]
 
-                #print(f'word: {word}')
+                # print(f'word: {word}')
 
                 set_categories.add(str(word).strip().lower())
 
@@ -231,6 +231,10 @@ hm3d_to_lvis_dict.pop('wall vent')
 hm3d_to_lvis_dict.pop('washing stuff')
 hm3d_to_lvis_dict.pop('wine rack')
 hm3d_to_lvis_dict.pop('śign')
+
+# ============== add some categories ===========
+hm3d_to_lvis_dict.update({'tv led': 'tv'})
+hm3d_to_lvis_dict.update({'tissue box': 'tissue_paper'})
 
 
 np.save(f'{output_folder}/hm3d_to_lvis_dict.npy', hm3d_to_lvis_dict)

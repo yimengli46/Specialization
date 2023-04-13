@@ -35,6 +35,7 @@ class preprocessing_view():
             os.mkdir(scene_folder)
         self.scene_folder = scene_folder
 
+        # ================= processing semantics ================
         self.hm3d_to_lvis_dict = hm3d_to_lvis_dict
         self.LVIS_dict = LVIS_dict
 
@@ -127,7 +128,7 @@ class preprocessing_view():
         for idx_ins in range(1, num_ins + 1):
             mask_ins = (self.instance_label == idx_ins)
             if np.sum(mask_ins) > 50:  # should have at least 50 pixels
-                #print(f'idx_ins = {idx_ins}')
+                # print(f'idx_ins = {idx_ins}')
                 x_coords = xv[mask_ins]
                 y_coords = yv[mask_ins]
                 ins_center = (floor(np.median(x_coords)),
@@ -171,7 +172,7 @@ class preprocessing_view():
             for goal_category in list(self.goal_category_set):  # 'toy'
                 goal_category_index = self.LVIS_dict['rowid2catid_dict'][self.LVIS_dict['cat_synonyms'].index(
                     goal_category)]
-                #print(f'goal_category = {goal_category}')
+                # print(f'goal_category = {goal_category}')
 
                 # ============================ localize the object on the map ==================
                 # find the instances containing the goal category
@@ -181,7 +182,7 @@ class preprocessing_view():
                     cat_index = self.LVIS_dict['rowid2catid_dict'][self.LVIS_dict['cat_synonyms'].index(
                         cat)]
                     if cat_index == goal_category_index:
-                        #print(f'cat = {cat}')
+                        # print(f'cat = {cat}')
                         ins_list_containing_goal.append(ins)
 
                 # ===========================================================================
@@ -243,7 +244,7 @@ class preprocessing_view():
                             mat_dist_view_to_cat[fron_idx,
                                                  self.goal_obj_index_list.index(goal_category_index)] = dist
 
-                            #print(f'dist = {dist:.2f}')
+                            # print(f'dist = {dist:.2f}')
 
                             # visualize a single view and distance to a goal
                             if False:
@@ -339,7 +340,7 @@ class preprocessing_view():
                                 ax[1, 1].set_title(f'component {ii}')
 
                                 fig.tight_layout()
-                                #plt.title(f'component {ii}')
+                                # plt.title(f'component {ii}')
                                 plt.show()
 
             # =========================== visualize the matrices with the frontiers ===================
@@ -396,14 +397,14 @@ class preprocessing_view():
                     'distance between frontiers and all categories')
 
                 fig.tight_layout()
-                #plt.title(f'component {ii}')
+                # plt.title(f'component {ii}')
                 plt.show()
 
             # ============== write frontier result to disk ================
             # write fron, mat[fron_idx] to a file
             for fron_idx, fron_data in enumerate(frontiers):
                 fron_data['mat_dist_to_cat'] = mat_dist_view_to_cat[fron_idx]
-                #print(f'mat.shape = {mat_dist_view_to_cat[fron_idx].shape}')
+                # print(f'mat.shape = {mat_dist_view_to_cat[fron_idx].shape}')
 
                 sample_name = str(count_view).zfill(5)
                 with bz2.BZ2File(f'{self.scene_folder}/{sample_name}.pbz2', 'w') as fp:

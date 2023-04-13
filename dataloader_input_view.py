@@ -181,7 +181,8 @@ class view_dataset(data.Dataset):
                     if x2 - x1 > 5 and y2 - y1 > 5:
                         bbox_list.append([x1, y1, x2, y2, cat_id])
 
-        return {'rgb': tensor_rgb, 'bbox': bbox_list, 'goal_obj': goal_obj, 'dist': tensor_dist}
+        return {'rgb': tensor_rgb, 'bbox': bbox_list, 'goal_obj': goal_obj, 'dist': tensor_dist,
+                'original_img': rgb_img}
 
 
 def get_all_view_dataset(split, data_folder, hm3d_to_lvis_dict, LVIS_dict):
@@ -214,6 +215,9 @@ def my_collate(batch):
 
     batch_bbox = [dict['bbox'] for dict in batch]
     output_dict['bbox'] = batch_bbox
+
+    batch_original_img = [dict['original_img'] for dict in batch]
+    output_dict['original_img'] = batch_original_img
 
     return output_dict
 

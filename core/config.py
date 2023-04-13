@@ -25,7 +25,7 @@ _C.SAVE.OCCUPANCY_MAP_PATH = 'output/semantic_map'  # built occupancy map
 # ==================================== for sensor =======================
 _C.SENSOR = CN()
 _C.SENSOR.DEPTH_MIN = 0.0
-_C.SENSOR.DEPTH_MAX = 10.0
+_C.SENSOR.DEPTH_MAX = 5.0
 _C.SENSOR.SENSOR_HEIGHT = 1.25
 _C.SENSOR.AGENT_HEIGHT = 1.5
 _C.SENSOR.AGENT_RADIUS = 0.1
@@ -43,7 +43,7 @@ _C.SEM_MAP.UNDETECTED_PIXELS_CLASS = 249
 _C.SEM_MAP.CELL_SIZE = 0.05
 # world model size in each dimension (left, right, top , bottom)
 _C.SEM_MAP.WORLD_SIZE = 50.0
-#_C.SEM_MAP.GRID_Y_SIZE = 60
+# _C.SEM_MAP.GRID_Y_SIZE = 60
 _C.SEM_MAP.GRID_CLASS_SIZE = 250
 _C.SEM_MAP.HABITAT_FLOOR_IDX = 2
 _C.SEM_MAP.POINTS_CNT = 2

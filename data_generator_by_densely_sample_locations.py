@@ -27,7 +27,7 @@ def build_env(split, scene_with_index, device_id=0):
     # ================================ load habitat env============================================
     print(f'scene_with_index = {scene_with_index}')
     config = habitat.get_config(
-        config_paths=cfg.GENERAL.DATALOADER_CONFIG_PATH)
+        config_paths='configs/habitat_env/dataloader_res1024.yaml')
     config.defrost()
     config.SIMULATOR.SCENE = f'data/scene_datasets/hm3d/{split}/{scene_with_index}/{scene_with_index[6:]}.glb'
     config.SIMULATOR.SCENE_DATASET = 'data/scene_datasets/hm3d/hm3d_annotated_basis.scene_dataset_config.json'

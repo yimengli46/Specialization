@@ -417,6 +417,11 @@ class Data_Gen_View:
                                     bbox_inches='tight')
                         plt.close()
 
+        # ============== release the resources =================
+        self.env.close()
+        gpu_Q.put(self.device_id)
+        return
+
 
 def multi_run_wrapper(args):
     """ wrapper for multiprocessor """

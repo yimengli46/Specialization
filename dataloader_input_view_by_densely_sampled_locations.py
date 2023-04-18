@@ -16,16 +16,6 @@ from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normal
 from PIL import Image
 
 
-def _transform(n_px):
-    return Compose([
-        # Resize(n_px, interpolation=InterpolationMode.BICUBIC),
-        # CenterCrop(n_px),
-        ToTensor(),
-        Normalize((0.48145466, 0.4578275, 0.40821073),
-                  (0.26862954, 0.26130258, 0.27577711)),
-    ])
-
-
 def process_lvis_dict(hm3d_to_lvis_dict, LVIS_dict):
     goal_obj_list = sorted(list(set(hm3d_to_lvis_dict.values())))  # size: 351
 
@@ -49,7 +39,7 @@ def process_lvis_dict(hm3d_to_lvis_dict, LVIS_dict):
 class view_dataset(data.Dataset):
 
     def __init__(self, split, scene_name, floor_id=0, data_folder='', hm3d_to_lvis_dict=None,
-                 LVIS_dict=None):
+                 LVIS_dict=None, transform=None):
         # self.random = Random(cfg.GENERAL.RANDOM_SEED)
 
         self.split = split
@@ -98,7 +88,7 @@ class view_dataset(data.Dataset):
                 self.ignored_category_id_set.add(k)
                 # print(f'class {v} is not a goal object.')
 
-        self.preprocess = _transform(1024)
+        self.preprocess = transform
 
     def __len__(self):
         return len(self.sample_name_list)
@@ -165,7 +155,7 @@ class view_dataset(data.Dataset):
                 'original_img': rgb_img}
 
 
-def get_all_view_dataset(split, data_folder, hm3d_to_lvis_dict, LVIS_dict):
+def get_all_view_dataset(split, data_folder, hm3d_to_lvis_dict, LVIS_dict, transforms=None):
     # read the scene folders
     scene_list = sorted(
         next(os.walk(f'{data_folder}/{split}'))[1])
@@ -174,7 +164,7 @@ def get_all_view_dataset(split, data_folder, hm3d_to_lvis_dict, LVIS_dict):
     for scene_floor in scene_list:
         scene_name, floor_id = scene_floor.split('_')
         view_ds = view_dataset(split, scene_name, floor_id,
-                               f'{data_folder}/{split}', hm3d_to_lvis_dict, LVIS_dict)
+                               f'{data_folder}/{split}', hm3d_to_lvis_dict, LVIS_dict, transforms)
         ds_list.append(view_ds)
 
     concat_ds = data.ConcatDataset(ds_list)

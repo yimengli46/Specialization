@@ -12,7 +12,7 @@ PRED:
     EVAL_INTERVAL: 1
     FLAG_VISUALIZE_PRED_LABELS: False
     LOSS_TYPE: L1
-    NUM_WORKERS: 10
+    NUM_WORKERS: 8
     RESUME: ''
     SAVED_FOLDER: 'output/model_weights_input_view'
     LR: 1e-3

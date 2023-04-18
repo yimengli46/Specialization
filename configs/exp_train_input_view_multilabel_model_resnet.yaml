@@ -4,15 +4,15 @@ NAVI:
 PRED:
   VIEW:
     MODEL_TYPE: 'resnet'
-    BATCH_SIZE: 3
+    BATCH_SIZE: 32
     RESNET_INPUT_CHANNEL: 3
     RESNET_OUTPUT_CHANNEL: 310
     DEVICE: cuda
-    EPOCHS: 6
+    EPOCHS: 1000
     EVAL_INTERVAL: 1
     FLAG_VISUALIZE_PRED_LABELS: False
     LOSS_TYPE: L1
-    NUM_WORKERS: 2
+    NUM_WORKERS: 16
     RESUME: ''
     SAVED_FOLDER: 'output/model_weights_input_view'
     LR: 1e-3

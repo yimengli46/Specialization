@@ -18,16 +18,15 @@
 #SBATCH --mail-user=yli44@gmu.edu     # Put your GMU email address here
 
 ## Specify how much memory your job needs. (2G is the default)
-#SBATCH --mem=300G        # Total memory needed per task (units: K,M,G,T)
+#SBATCH --mem=500G        # Total memory needed per task (units: K,M,G,T)
 
 ## Specify how much time your job needs. (default: see partition above)
 ## SBATCH --time=5-00:00   # Total time needed for job: Days-Hours:Minutes
-#SBATCH --deadline=03/12-23:00
 
-#SBATCH --gres=gpu:2
-#SBATCH --nodelist=NODE079
+#SBATCH --gres=gpu:4
+#SBATCH --nodelist=NODE077
 
-#SBATCH --cpus-per-task 24
+#SBATCH --cpus-per-task 25
 
 ## Load the relevant modules needed for the job
 module load cuda/11.2
@@ -37,5 +36,5 @@ module load gcc/7.5.0
 source /scratch/yli44/env_specialization/bin/activate
 
 ## Run your program or script
-#python data_generator_input_view.py --split='val'  --j=10
-python data_generator_input_view.py --split='train' --j=10
+#python data_generator_by_densely_sample_locations.py --split='val'  --j=6
+python data_generator_by_densely_sample_locations.py --split='train'  --j=6

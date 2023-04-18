@@ -27,42 +27,14 @@ class resnet(nn.Module):
         self.resnet.conv1 = nn.Conv2d(
             n_channel_in, 64, kernel_size=3, stride=1, padding=1, bias=False
         )
-        self.fc1 = nn.Linear(256 + 384, 256)
-        self.fc2 = nn.Linear(256, 1)
-
-        self.lvis_cat_synonyms_list = lvis_cat_synonyms_list
-        self.lvis_cat_synonyms_embedding = lvis_cat_synonyms_embedding
-        self.goal_obj_index_embeddings = torch.tensor(
-            goal_obj_index_embeddings).float()
-        self.goal_obj_index_list = goal_obj_index_list
+        self.fc1 = nn.Linear(256, 256)
+        self.fc2 = nn.Linear(256, n_class_out)
 
     def forward(self, x, target_obj_list):
         B = x.shape[0]
-
         x = self.resnet(x)  # B x 256
-        # print(f'x.shape = {x.shape}')
-
-        target_embedding = np.zeros((B, 310, 384), dtype=np.float32)
-        for idx0, target_obj in enumerate(target_obj_list):
-            for idx1, target in enumerate(target_obj):
-                target_embedding[idx0, idx1] = self.lvis_cat_synonyms_embedding[self.lvis_cat_synonyms_list.index(
-                    target)]
-        target_embedding = torch.tensor(
-            target_embedding).float().cuda()  # B x 310 x 384
-
-        # encode the target
-        # target_embedding = np.stack([self.lvis_cat_synonyms_embedding[self.lvis_cat_synonyms_list.index(
-        #     target_obj)] for target_obj in target_obj_list])  # B x 384
-        # target_embedding = torch.tensor(
-        #     target_embedding).float().cuda()  # B x 384
-        # print(f'target_embedding.shape = {target_embedding.shape}')
-
-        # z = torch.cat((z, target_embedding), dim=1)
-
-        x = x.view(B, 1, -1)
-        z = torch.cat((x.expand(B, 310, 256), target_embedding), dim=2)
-
-        z = F.relu(self.fc1(z))
+        x = x.view(B, -1)
+        z = F.relu(self.fc1(x))
         y_pred = self.fc2(z)
         # print(f'y_pred.shape = {y_pred.shape}')
         return y_pred

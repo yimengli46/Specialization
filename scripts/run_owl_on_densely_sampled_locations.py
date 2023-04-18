@@ -130,7 +130,7 @@ for scene_idx in range(len(list_scene_idx)):
         color_semantic_map[enlarged_occ_map > 0] = np.ones(3)*255
 
         # ====================================== compute centers of semantic classes =====================================
-        #IGNORED_CLASS = [0, 1, 2, 3, 5, 6, 7, 8, 9, 11, 13, 17, 18, 19, 20, 21, 27, 28, 33, 35, 36, 37, 39, 40, 42, 47, 48, 55, 56, 60, 69, 70, 71, 74, 79, 89]
+        # IGNORED_CLASS = [0, 1, 2, 3, 5, 6, 7, 8, 9, 11, 13, 17, 18, 19, 20, 21, 27, 28, 33, 35, 36, 37, 39, 40, 42, 47, 48, 55, 56, 60, 69, 70, 71, 74, 79, 89]
         IGNORED_CLASS = [0]
         for k, v in idx2cat_dict.items():
             if 'wall' in v:
@@ -257,7 +257,7 @@ for scene_idx in range(len(list_scene_idx)):
                     boxes, scores, labels = results[0]["boxes"], results[0]["scores"], results[0]["labels"]
                     text = texts[0]
 
-                    #fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+                    # fig, ax = plt.subplots(1, 1, figsize=(8, 8))
                     # ax.imshow(img)
                     # ax.set_axis_off()
 
@@ -268,7 +268,7 @@ for scene_idx in range(len(list_scene_idx)):
                         (512 + 1e-2) / dpi,
                     )
                     canvas = FigureCanvasAgg(fig)
-                    #ax = fig.gca()
+                    # ax = fig.gca()
                     ax = fig.add_axes([0.0, 0.0, 1.0, 1.0])
                     ax.axis("off")
 
@@ -295,7 +295,7 @@ for scene_idx in range(len(list_scene_idx)):
                     img_rgba = buffer.reshape(height, width, 4)
                     rgb, alpha = np.split(img_rgba, [3], axis=2)
                     panopSeg_list.append(rgb.astype('uint8'))
-                    #assert 1==2
+                    # assert 1==2
 
             panor_panopSeg = np.concatenate(
                 (panopSeg_list[0], panopSeg_list[1], panopSeg_list[2], panopSeg_list[3]), axis=1)
@@ -338,15 +338,15 @@ for scene_idx in range(len(list_scene_idx)):
             manager = plt.get_current_fig_manager()
             manager.resize(*manager.window.maxsize())
             # plt.show()
-            ''' 
-			instead of using plt.savefig, use fig.savefig to make sure the
-			saved image is the same as using plt.show()
-			'''
-            #plt.savefig(f'{saved_folder}/{pbz_file}.jpg', bbox_inches='tight', dpi=200)
+            '''
+            instead of using plt.savefig, use fig.savefig to make sure the
+            saved image is the same as using plt.show()
+            '''
+            # plt.savefig(f'{saved_folder}/{pbz_file}.jpg', bbox_inches='tight', dpi=200)
             fig = plt.gcf()
             fig.set_size_inches((11, 8.5), forward=False)
             fig.savefig(f'{saved_folder}/{pbz_file}.jpg',
                         bbox_inches='tight', dpi=500)
             plt.close()
 
-        #assert 1==2
+        # assert 1==2

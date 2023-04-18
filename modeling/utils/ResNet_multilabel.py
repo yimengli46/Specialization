@@ -10,13 +10,54 @@ import torch.nn.functional as F
 import clip
 
 
+class cnn(nn.Module):
+    def __init__(self, n_channel_in, n_class_out):
+        super(cnn, self).__init__()
+        self.conv1 = nn.Conv2d(n_channel_in, 64, 5)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.conv2 = nn.Conv2d(64, 64, 3)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.conv3 = nn.Conv2d(64, 64, 3)
+        self.bn3 = nn.BatchNorm2d(64)
+        self.conv4 = nn.Conv2d(64, 32, 3)
+        self.bn4 = nn.BatchNorm2d(32)
+        self.conv5 = nn.Conv2d(32, 16, 3)
+        self.bn5 = nn.BatchNorm2d(16)
+        self.conv6 = nn.Conv2d(16, 8, 3)
+        self.bn6 = nn.BatchNorm2d(8)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.pool2 = nn.MaxPool2d(4, 4)
+        self.fc1 = nn.Linear(8 * 7 * 7, 256)
+        self.fc2 = nn.Linear(256, 256)
+        self.fc3 = nn.Linear(256, n_class_out)
+
+    def forward(self, x):
+        B = x.shape[0]
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = self.pool(x)
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = self.pool(x)
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = self.pool(x)
+        x = F.relu(self.bn4(self.conv4(x)))
+        x = self.pool(x)
+        x = F.relu(self.bn5(self.conv5(x)))
+        x = self.pool(x)
+        x = F.relu(self.bn6(self.conv6(x)))
+        x = self.pool2(x)
+        # print(f'x.shape = {x.shape}')
+        x = x.view(B, -1)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+
+
 class resnet(nn.Module):
     def __init__(
         self,
         n_channel_in,
         n_class_out,
-        lvis_cat_synonyms_list, lvis_cat_synonyms_embedding,
-        goal_obj_index_list, goal_obj_index_embeddings
     ):
         super().__init__()
 

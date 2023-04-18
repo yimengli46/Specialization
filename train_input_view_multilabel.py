@@ -2,7 +2,7 @@ import torch.optim as optim
 import os
 import numpy as np
 # from modeling.utils.ResNet import resnet, context_matrix, knowledge_graph, clip_fc
-from modeling.utils.ResNet_multilabel import resnet, context_matrix
+from modeling.utils.ResNet_multilabel import resnet, context_matrix, cnn
 from sseg_utils.saver import Saver
 from sseg_utils.summaries import TensorboardSummary
 import matplotlib.pyplot as plt
@@ -17,6 +17,21 @@ import argparse
 from sklearn.metrics import f1_score, average_precision_score
 import random
 import torch.nn.functional as F
+from torchvision import transforms
+
+train_transform = transforms.Compose([
+    transforms.RandomResizedCrop(1024),
+    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    transforms.Normalize((0.48145466, 0.4578275, 0.40821073),
+                         (0.26862954, 0.26130258, 0.27577711)),
+])
+
+test_transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.48145466, 0.4578275, 0.40821073),
+                         (0.26862954, 0.26130258, 0.27577711)),
+])
 
 
 def gen_plot(y_pred, y_label):
@@ -61,6 +76,9 @@ def train(model_type):
     elif model_type == 'clip':
         cfg.merge_from_file(
             'configs/exp_train_input_view_model_clip.yaml')
+    elif model_type == 'cnn':
+        cfg.merge_from_file(
+            'configs/exp_train_input_view_multilabel_model_cnn.yaml')
     else:
         raise NotImplementedError("This model is not implemented.")
     cfg.freeze()
@@ -99,8 +117,9 @@ def train(model_type):
 
     # =========================================================== Define Dataloader ==================================================
     data_folder = cfg.PRED.VIEW.DENSELY_SAMPLED_LOCATIONS_SAVED_FOLDER
+
     dataset_train = get_all_view_dataset(
-        'train', data_folder, hm3d_to_lvis_dict, LVIS_dict)
+        'train', data_folder, hm3d_to_lvis_dict, LVIS_dict, train_transform)
     dataloader_train = data.DataLoader(dataset_train,
                                        batch_size=cfg.PRED.VIEW.BATCH_SIZE,
                                        num_workers=cfg.PRED.VIEW.NUM_WORKERS,
@@ -109,7 +128,7 @@ def train(model_type):
                                        )
 
     dataset_val = get_all_view_dataset(
-        'val', data_folder, hm3d_to_lvis_dict, LVIS_dict)
+        'val', data_folder, hm3d_to_lvis_dict, LVIS_dict, test_transform)
     dataloader_val = data.DataLoader(dataset_val,
                                      batch_size=cfg.PRED.VIEW.BATCH_SIZE,
                                      num_workers=cfg.PRED.VIEW.NUM_WORKERS,
@@ -122,9 +141,7 @@ def train(model_type):
     # Define network
     if cfg.PRED.VIEW.MODEL_TYPE == 'resnet':
         model = resnet(cfg.PRED.VIEW.RESNET_INPUT_CHANNEL,
-                       cfg.PRED.VIEW.RESNET_OUTPUT_CHANNEL,
-                       lvis_cat_synonyms_list, lvis_cat_synonyms_embedding,
-                       goal_obj_index_list, goal_obj_index_embeddings)
+                       cfg.PRED.VIEW.RESNET_OUTPUT_CHANNEL)
     elif cfg.PRED.VIEW.MODEL_TYPE == 'context_matrix':
         model = context_matrix(lvis_cat_synonyms_list, lvis_cat_synonyms_embedding,
                                goal_obj_index_list, goal_obj_index_embeddings)
@@ -133,6 +150,9 @@ def train(model_type):
                                 goal_obj_index_list, goal_obj_index_embeddings)
     elif cfg.PRED.VIEW.MODEL_TYPE == 'clip':
         model = clip_fc()
+    elif cfg.PRED.VIEW.MODEL_TYPE == 'cnn':
+        model = cnn(cfg.PRED.VIEW.INPUT_CHANNEL,
+                    cfg.PRED.VIEW.OUTPUT_CHANNEL)
     model = nn.DataParallel(model)
     model = model.cuda()
 
@@ -140,7 +160,7 @@ def train(model_type):
     train_params = [{'params': model.parameters(), 'lr': cfg.PRED.VIEW.LR}]
     optimizer = optim.Adam(
         train_params, lr=cfg.PRED.VIEW.LR, betas=(0.9, 0.999))
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.1)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
 
     # Define Criterion
     # whether to use class balanced weights
@@ -186,6 +206,8 @@ def train(model_type):
                 output = model(bbox_list, goal_objs)
             elif cfg.PRED.VIEW.MODEL_TYPE == 'clip':
                 output = model(images, goal_objs)  # batchsize x 1 x H x W
+            elif cfg.PRED.VIEW.MODEL_TYPE == 'cnn':
+                output = model(images)  # batchsize x 1 x H x W
             print(f'output.shape = {output.shape}')
             # print(f'output = {output}')
             # print(f'dists.shape = {dists.shape}')
@@ -247,6 +269,8 @@ def train(model_type):
                     elif cfg.PRED.VIEW.MODEL_TYPE == 'clip':
                         # batchsize x 1 x H x W
                         output = model(images, goal_objs)
+                    elif cfg.PRED.VIEW.MODEL_TYPE == 'cnn':
+                        output = model(images)  # batchsize x 1 x H x W
                     print(f'output.shape = {output.shape}')
 
                     loss = criterion(output, dists)

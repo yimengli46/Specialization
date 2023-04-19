@@ -93,12 +93,11 @@ class context_matrix(nn.Module):
             goal_obj_index_embeddings).float().unsqueeze(0).detach()  # 1 x 310 x 384
         self.goal_obj_index_list = goal_obj_index_list
 
-        self.fc_cm = nn.Linear(310 * 5, 256)
-        self.fc1 = nn.Linear(256 + 384, 256)
-        self.fc2 = nn.Linear(256, 2)
+        self.fc1 = nn.Linear(310 * 5, 256)
+        self.fc2 = nn.Linear(256, 310)
 
     def forward(self, objbb_list, target_obj_list):
-        objstate = torch.zeros(len(objbb_list), self.n, 4).float()
+        objstate = torch.zeros(len(objbb_list), self.n, 5).float()
         # compute the first 4 columns of the context matrix
         for idx, objbb in enumerate(objbb_list):
             for bbox in objbb:
@@ -111,34 +110,17 @@ class context_matrix(nn.Module):
                     y1 / 2. + y2 / 2.) / cfg.SENSOR.OBS_WIDTH
                 objstate[idx][ind][3] = abs(x2 - x1) * abs(y2 - y1) / \
                     (cfg.SENSOR.OBS_WIDTH * cfg.SENSOR.OBS_WIDTH)
-
+                objstate[idx][ind][4] = 1
+            # print(f'objstate[{idx}] = {objstate[idx, :, 4].nonzero()}')
         # print(f'objstate.shape = {objstate.shape}')
 
-        # compute the last column of the context matrix
-        cos = torch.nn.CosineSimilarity(dim=2, eps=1e-6)
-        target_embedding = np.stack([self.lvis_cat_synonyms_embedding[self.lvis_cat_synonyms_list.index(
-            target_obj)] for target_obj in target_obj_list])  # B x 384
-        target_embedding = torch.tensor(
-            target_embedding).float().unsqueeze(1)  # B x 1 x 384
-        embedding_similarity = cos(self.goal_obj_index_embeddings,
-                                   target_embedding).unsqueeze(2).float()
-        # print(
-        #     f'self.goal_obj_index_embeddings.shape = {self.goal_obj_index_embeddings.shape}')
-        # print(f'embedding_sim.shape = {embedding_similarity.shape}')
-
-        objstate = torch.cat((objstate, embedding_similarity), dim=2)
-        # print(f'objstate.shape = {objstate.shape}')
-
-        B, num_classes, _ = objstate.shape
+        B, _, _ = objstate.shape
+        # objstate = objstate[:, :, 4]
         x = objstate.view(B, -1).cuda()
         # print(f'x.shape = {x.shape}')
 
-        z = F.relu(self.fc_cm(x))
-        target_embedding = target_embedding.squeeze(1).cuda()
-        z = torch.cat((z, target_embedding), dim=1)
-
-        z = F.relu(self.fc1(z))
-        y_pred = self.fc2(z)
+        x = F.relu(self.fc1(x))
+        y_pred = self.fc2(x)
         return y_pred
 
 

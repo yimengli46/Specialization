@@ -72,7 +72,7 @@ def train(model_type):
             'configs/exp_train_input_view_model_knowledge_graph.yaml')
     elif model_type == 'context_matrix':
         cfg.merge_from_file(
-            'configs/exp_train_input_view_model_context_matrix.yaml')
+            'configs/exp_train_input_view_multilabel_model_context_matrix.yaml')
     elif model_type == 'clip':
         cfg.merge_from_file(
             'configs/exp_train_input_view_model_clip.yaml')
@@ -215,6 +215,7 @@ def train(model_type):
             # dists = dists.view(-1)
 
             loss = criterion(output, dists)
+            # print(f'dists = {dists.nonzero()}')
 
             # ================================================= compute gradient =================================================
             optimizer.zero_grad()

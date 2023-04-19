@@ -130,7 +130,7 @@ def train(model_type):
                                        )
 
     dataset_val = get_all_view_dataset(
-        'train', data_folder, hm3d_to_lvis_dict, LVIS_dict, test_transform)
+        'val', data_folder, hm3d_to_lvis_dict, LVIS_dict, test_transform)
     dataloader_val = data.DataLoader(dataset_val,
                                      batch_size=cfg.PRED.VIEW.BATCH_SIZE,
                                      num_workers=cfg.PRED.VIEW.NUM_WORKERS,

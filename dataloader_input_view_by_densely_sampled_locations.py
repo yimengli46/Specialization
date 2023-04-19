@@ -111,8 +111,12 @@ class view_dataset(data.Dataset):
 
         # compute dist
         mat_dist = fron['mat_dist_to_cat']
-        mask = mat_dist > 1
-        mat_dist[mask] = 0
+        if cfg.PRED.VIEW.MULTILABEL_MODE == 'detected_only':
+            mask = mat_dist > 1
+            mat_dist[mask] = 0
+        elif cfg.PRED.VIEW.MULTILABEL_MODE == 'detected_and_nearby':
+            mask = mat_dist > 1
+            mat_dist[mask] = 1
         # print(f'dist = {mat_dist}')
         tensor_dist = torch.tensor(mat_dist).long()
         # print(f'tensor_dist = {tensor_dist.shape}')

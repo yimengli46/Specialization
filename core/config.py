@@ -121,6 +121,8 @@ _C.PRED.VIEW.GEN_SAMPLES_SAVED_FOLDER = 'output/training_data_input_view_1000sam
 _C.PRED.VIEW.PROCESSED_FRONTIER_SAVED_FOLDER = 'output/training_data_processed_frontier_1000samples'
 # visualize the frontier and the map
 _C.PRED.VIEW.FLAG_VIS_FRONTIER_ON_MAP = False
+# multilabel classification mode
+MULTILABEL_MODE: 'detected_only'
 
 # ========================== experiments =============================
 _C.EXPERIMENTS = CN()

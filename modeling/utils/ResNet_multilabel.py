@@ -161,13 +161,13 @@ class knowledge_graph(nn.Module):
             goal_obj_index_embeddings).float().unsqueeze(0).detach()  # 1 x 310 x 384
         self.goal_obj_index_list = goal_obj_index_list
 
-        self.W0 = nn.Linear(694, 256, bias=False)
-        self.W1 = nn.Linear(256, 256, bias=False)
-        self.W2 = nn.Linear(256, 1, bias=False)
+        self.W0 = nn.Linear(620, 620, bias=False)
+        self.W1 = nn.Linear(620, 620, bias=False)
+        self.W2 = nn.Linear(620, 5, bias=False)
+        self.W3 = nn.Linear(10, 2, bias=False)
 
-        self.fc_kg = nn.Linear(self.n, 256)
-        self.fc1 = nn.Linear(256 + 384, 256)
-        self.fc2 = nn.Linear(256, 1)
+        self.fc1 = nn.Linear(self.n * 2, 256)
+        self.fc2 = nn.Linear(256, 310)
 
     def forward(self, objbb_list, target_obj_list):
         B = len(objbb_list)
@@ -179,44 +179,49 @@ class knowledge_graph(nn.Module):
                 x1, y1, x2, y2, cat_id = bbox
                 ind = self.goal_obj_index_list.index(cat_id)
                 class_onehot[idx, 0, ind] = 1
+        class_onehot = class_onehot.expand(-1, self.n, -1)
 
-        class_node_embedding = torch.cat((class_onehot.repeat(
-            1, self.n, 1), self.goal_obj_index_embeddings.repeat(B, 1, 1)), dim=2).cuda()  # B x 310 x 694
+        one_hot_matrix = F.one_hot(torch.arange(
+            0, self.n), num_classes=self.n).unsqueeze(0).expand(B, -1, -1)  # B x 310 x 310
+
+        class_node_embedding = torch.cat(
+            (class_onehot, one_hot_matrix), dim=2).cuda()  # B x 310 x 620
         # print(f'class_node_embedding.shape = {class_node_embedding.shape}')
 
-        x = torch.bmm(self.A.repeat(B, 1, 1),
-                      class_node_embedding)  # B x 310 x 694
+        x = torch.bmm(self.A.unsqueeze(0).expand(B, -1, -1),
+                      class_node_embedding)  # B x 310 x 620
         # print(f'x.shape = {x.shape}')
         x = F.relu(self.W0(x))
-        x = torch.bmm(self.A.repeat(B, 1, 1), x)
+        x = torch.bmm(self.A.unsqueeze(0).expand(B, -1, -1), x)
         x = F.relu(self.W1(x))
-        x = torch.bmm(self.A.repeat(B, 1, 1), x)
+        x = torch.bmm(self.A.unsqueeze(0).expand(B, -1, -1), x)
         x = F.relu(self.W2(x))  # B x 310 x 1
         # print(f'x.shape = {x.shape}')
-        x = x.view(B, self.n)  # B x 310
-        # print(f'x.shape = {x.shape}')
-        x = F.relu(self.fc_kg(x))  # B x 256
-        # print(f'x.shape = {x.shape}')
 
-        target_embedding = np.zeros((B, 310, 384), dtype=np.float32)
-        for idx0, target_obj in enumerate(target_obj_list):
-            for idx1, target in enumerate(target_obj):
-                target_embedding[idx0, idx1] = self.lvis_cat_synonyms_embedding[self.lvis_cat_synonyms_list.index(
-                    target)]
-        target_embedding = torch.tensor(
-            target_embedding).float().cuda()  # B x 310 x 384
+        # ====================build objstate
+        objstate = torch.zeros(B, self.n, 5).float()
+        # compute the first 4 columns of the context matrix
+        for idx, objbb in enumerate(objbb_list):
+            for bbox in objbb:
+                x1, y1, x2, y2, cat_id = bbox
+                ind = self.goal_obj_index_list.index(cat_id)
+                objstate[idx][ind][0] = 1
+                objstate[idx][ind][1] = (
+                    x1 / 2. + x2 / 2.) / cfg.SENSOR.OBS_WIDTH
+                objstate[idx][ind][2] = (
+                    y1 / 2. + y2 / 2.) / cfg.SENSOR.OBS_WIDTH
+                objstate[idx][ind][3] = abs(x2 - x1) * abs(y2 - y1) / \
+                    (cfg.SENSOR.OBS_WIDTH * cfg.SENSOR.OBS_WIDTH)
+                objstate[idx][ind][4] = 1
+        objstate = objstate.cuda()
 
-        # target_embedding = np.stack([np.stack([self.lvis_cat_synonyms_embedding[self.lvis_cat_synonyms_list.index(
-        #     target_obj)] for target_obj in target_obj_list]) for target_obj_list in target_obj_list_list])  # B x 384
-        # target_embedding = torch.tensor(
-        #     target_embedding).float().cuda()  # B x 384
+        x = torch.cat((x, objstate), dim=2)
 
-        x = x.view(B, 1, -1)
-        z = torch.cat((x.expand(B, 310, 256), target_embedding), dim=2)
-
-        z = F.relu(self.fc1(z))
-        y_pred = self.fc2(z)
-
+        x = torch.bmm(self.A.unsqueeze(0).expand(B, -1, -1), x)
+        x = F.relu(self.W3(x))
+        x = x.view(B, -1)
+        x = F.relu(self.fc1(x))
+        y_pred = self.fc2(x)
         return y_pred
 
 

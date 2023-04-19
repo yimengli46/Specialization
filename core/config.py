@@ -122,7 +122,7 @@ _C.PRED.VIEW.PROCESSED_FRONTIER_SAVED_FOLDER = 'output/training_data_processed_f
 # visualize the frontier and the map
 _C.PRED.VIEW.FLAG_VIS_FRONTIER_ON_MAP = False
 # multilabel classification mode
-MULTILABEL_MODE: 'detected_only'
+_C.PRED.VIEW.MULTILABEL_MODE = 'detected_only'
 
 # ========================== experiments =============================
 _C.EXPERIMENTS = CN()

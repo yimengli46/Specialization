@@ -1,8 +1,7 @@
 import torch.optim as optim
 import os
 import numpy as np
-# from modeling.utils.ResNet import resnet, context_matrix, knowledge_graph, clip_fc
-from modeling.utils.ResNet_multilabel import resnet, context_matrix, cnn
+from modeling.utils.ResNet_multilabel import resnet, context_matrix, cnn, knowledge_graph
 from sseg_utils.saver import Saver
 from sseg_utils.summaries import TensorboardSummary
 import matplotlib.pyplot as plt
@@ -69,7 +68,7 @@ def train(model_type):
             'configs/exp_train_input_view_multilabel_model_resnet.yaml')
     elif model_type == 'knowledge_graph':
         cfg.merge_from_file(
-            'configs/exp_train_input_view_model_knowledge_graph.yaml')
+            'configs/exp_train_input_view_multilabel_model_knowledge_graph.yaml')
     elif model_type == 'context_matrix':
         cfg.merge_from_file(
             'configs/exp_train_input_view_multilabel_model_context_matrix.yaml')

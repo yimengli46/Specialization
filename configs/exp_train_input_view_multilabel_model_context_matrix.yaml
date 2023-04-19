@@ -19,6 +19,7 @@ PRED:
     PROCESSED_VIEW_SAVED_FOLDER: 'output/training_preprocessed_view_1000samples'
     DENSELY_SAMPLED_LOCATIONS_SAVED_FOLDER: 'output/training_data_input_view_by_densely_sample_locations'
     EPS_SAVE_GAP: 20
+    MULTILABEL_MODE: 'detected_and_nearby'
 
 
 SAVE:

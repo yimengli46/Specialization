@@ -164,10 +164,10 @@ class knowledge_graph(nn.Module):
         self.W0 = nn.Linear(620, 620, bias=False)
         self.W1 = nn.Linear(620, 620, bias=False)
         self.W2 = nn.Linear(620, 5, bias=False)
-        self.W3 = nn.Linear(10, 2, bias=False)
+        self.W3 = nn.Linear(10, 1, bias=False)
 
-        self.fc1 = nn.Linear(self.n * 2, 256)
-        self.fc2 = nn.Linear(256, 310)
+        self.fc1 = nn.Linear(self.n, 512)
+        self.fc2 = nn.Linear(512, 310)
 
     def forward(self, objbb_list, target_obj_list):
         B = len(objbb_list)
@@ -221,6 +221,104 @@ class knowledge_graph(nn.Module):
         x = F.relu(self.W3(x))
         x = x.view(B, -1)
         x = F.relu(self.fc1(x))
+        y_pred = self.fc2(x)
+        return y_pred
+
+
+class cm_and_kg(nn.Module):
+    def __init__(self, lvis_cat_synonyms_list, lvis_cat_synonyms_embedding,
+                 goal_obj_index_list, goal_obj_index_embeddings):
+        super().__init__()
+
+        # get and normalize adjacency matrix
+        with bz2.BZ2File('output/knowledge_graph/LVIS_relationships.pbz2', 'rb') as fp:
+            LVIS_relationships = cPickle.load(fp)
+            adjacency_cat_id = LVIS_relationships['adjacency_cat_id']
+            all_obj_cat_ids = LVIS_relationships['all_obj_cat_ids']
+
+        self.relationships_all_obj_cat_ids = all_obj_cat_ids
+
+        adjacency_cat_id = adjacency_cat_id.astype('float32')
+        adjacency_cat_id += 1e-5
+        A = normalize_adj(adjacency_cat_id)
+        # torch.nn.Parameter(torch.tensor(A))
+        self.A = torch.tensor(A).detach().cuda()
+
+        self.n = len(goal_obj_index_list)
+        self.lvis_cat_synonyms_list = lvis_cat_synonyms_list
+        self.lvis_cat_synonyms_embedding = lvis_cat_synonyms_embedding
+        self.goal_obj_index_embeddings = torch.tensor(
+            goal_obj_index_embeddings).float().unsqueeze(0).detach()  # 1 x 310 x 384
+        self.goal_obj_index_list = goal_obj_index_list
+
+        self.W0 = nn.Linear(620, 620, bias=False)
+        self.W1 = nn.Linear(620, 620, bias=False)
+        self.W2 = nn.Linear(620, 5, bias=False)
+        self.W3 = nn.Linear(10, 1, bias=False)
+
+        self.kg_fc1 = nn.Linear(self.n, 512)
+        # self.fc2 = nn.Linear(256, 310)
+
+        self.cm_fc1 = nn.Linear(310 * 5, 512)
+        self.fc2 = nn.Linear(512 * 2, 310)
+
+    def forward(self, objbb_list, target_obj_list):
+        B = len(objbb_list)
+        class_onehot = torch.zeros(
+            B, 1, self.n).float()  # B x 1 x n
+
+        for idx, objbb in enumerate(objbb_list):
+            for bbox in objbb:
+                x1, y1, x2, y2, cat_id = bbox
+                ind = self.goal_obj_index_list.index(cat_id)
+                class_onehot[idx, 0, ind] = 1
+        class_onehot = class_onehot.expand(-1, self.n, -1)
+
+        one_hot_matrix = F.one_hot(torch.arange(
+            0, self.n), num_classes=self.n).unsqueeze(0).expand(B, -1, -1)  # B x 310 x 310
+
+        class_node_embedding = torch.cat(
+            (class_onehot, one_hot_matrix), dim=2).cuda()  # B x 310 x 620
+        # print(f'class_node_embedding.shape = {class_node_embedding.shape}')
+
+        x = torch.bmm(self.A.unsqueeze(0).expand(B, -1, -1),
+                      class_node_embedding)  # B x 310 x 620
+        # print(f'x.shape = {x.shape}')
+        x = F.relu(self.W0(x))
+        x = torch.bmm(self.A.unsqueeze(0).expand(B, -1, -1), x)
+        x = F.relu(self.W1(x))
+        x = torch.bmm(self.A.unsqueeze(0).expand(B, -1, -1), x)
+        x = F.relu(self.W2(x))  # B x 310 x 1
+        # print(f'x.shape = {x.shape}')
+
+        # ====================build objstate
+        objstate = torch.zeros(B, self.n, 5).float()
+        # compute the first 4 columns of the context matrix
+        for idx, objbb in enumerate(objbb_list):
+            for bbox in objbb:
+                x1, y1, x2, y2, cat_id = bbox
+                ind = self.goal_obj_index_list.index(cat_id)
+                objstate[idx][ind][0] = 1
+                objstate[idx][ind][1] = (
+                    x1 / 2. + x2 / 2.) / cfg.SENSOR.OBS_WIDTH
+                objstate[idx][ind][2] = (
+                    y1 / 2. + y2 / 2.) / cfg.SENSOR.OBS_WIDTH
+                objstate[idx][ind][3] = abs(x2 - x1) * abs(y2 - y1) / \
+                    (cfg.SENSOR.OBS_WIDTH * cfg.SENSOR.OBS_WIDTH)
+                objstate[idx][ind][4] = 1
+        objstate = objstate.cuda()
+
+        x = torch.cat((x, objstate), dim=2)
+
+        x = torch.bmm(self.A.unsqueeze(0).expand(B, -1, -1), x)
+        x = F.relu(self.W3(x))
+        x = x.view(B, -1)
+        kg_x = F.relu(self.kg_fc1(x))
+
+        objstate = objstate.view(B, -1)
+        cm_x = F.relu(self.cm_fc1(objstate))
+
+        x = torch.cat((cm_x, kg_x), dim=1)
         y_pred = self.fc2(x)
         return y_pred
 

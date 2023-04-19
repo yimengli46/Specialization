@@ -1,7 +1,7 @@
 import torch.optim as optim
 import os
 import numpy as np
-from modeling.utils.ResNet_multilabel import resnet, context_matrix, cnn, knowledge_graph
+from modeling.utils.ResNet_multilabel import resnet, context_matrix, cnn, knowledge_graph, cm_and_kg
 from sseg_utils.saver import Saver
 from sseg_utils.summaries import TensorboardSummary
 import matplotlib.pyplot as plt
@@ -78,6 +78,9 @@ def train(model_type):
     elif model_type == 'cnn':
         cfg.merge_from_file(
             'configs/exp_train_input_view_multilabel_model_cnn.yaml')
+    elif model_type == 'cm_and_kg':
+        cfg.merge_from_file(
+            'configs/exp_train_input_view_multilabel_model_combine_context_matrix_and_kg.yaml')
     else:
         raise NotImplementedError("This model is not implemented.")
     cfg.freeze()
@@ -127,7 +130,7 @@ def train(model_type):
                                        )
 
     dataset_val = get_all_view_dataset(
-        'val', data_folder, hm3d_to_lvis_dict, LVIS_dict, test_transform)
+        'train', data_folder, hm3d_to_lvis_dict, LVIS_dict, test_transform)
     dataloader_val = data.DataLoader(dataset_val,
                                      batch_size=cfg.PRED.VIEW.BATCH_SIZE,
                                      num_workers=cfg.PRED.VIEW.NUM_WORKERS,
@@ -152,6 +155,9 @@ def train(model_type):
     elif cfg.PRED.VIEW.MODEL_TYPE == 'cnn':
         model = cnn(cfg.PRED.VIEW.INPUT_CHANNEL,
                     cfg.PRED.VIEW.OUTPUT_CHANNEL)
+    elif cfg.PRED.VIEW.MODEL_TYPE == 'cm_and_kg':
+        model = cm_and_kg(lvis_cat_synonyms_list, lvis_cat_synonyms_embedding,
+                          goal_obj_index_list, goal_obj_index_embeddings)
     model = nn.DataParallel(model)
     model = model.cuda()
 
@@ -207,6 +213,8 @@ def train(model_type):
                 output = model(images, goal_objs)  # batchsize x 1 x H x W
             elif cfg.PRED.VIEW.MODEL_TYPE == 'cnn':
                 output = model(images)  # batchsize x 1 x H x W
+            elif cfg.PRED.VIEW.MODEL_TYPE == 'cm_and_kg':
+                output = model(bbox_list, goal_objs)
             print(f'output.shape = {output.shape}')
             # print(f'output = {output}')
             # print(f'dists.shape = {dists.shape}')
@@ -271,6 +279,8 @@ def train(model_type):
                         output = model(images, goal_objs)
                     elif cfg.PRED.VIEW.MODEL_TYPE == 'cnn':
                         output = model(images)  # batchsize x 1 x H x W
+                    elif cfg.PRED.VIEW.MODEL_TYPE == 'cm_and_kg':
+                        output = model(bbox_list, goal_objs)
                     print(f'output.shape = {output.shape}')
 
                     loss = criterion(output, dists)

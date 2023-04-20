@@ -5,7 +5,7 @@ from modeling.utils.ResNet import resnet, context_matrix, knowledge_graph, clip_
 from sseg_utils.saver import Saver
 from sseg_utils.summaries import TensorboardSummary
 import matplotlib.pyplot as plt
-from dataloader_input_view import get_all_view_dataset, my_collate
+from dataloader_input_view_by_densely_sampled_locations import get_all_view_dataset, my_collate
 import torch.utils.data as data
 import torch
 import torch.nn as nn
@@ -13,16 +13,31 @@ from core import cfg
 import bz2
 import _pickle as cPickle
 import argparse
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, average_precision_score
 import random
 import torch.nn.functional as F
+from torchvision import transforms
+
+train_transform = transforms.Compose([
+    transforms.RandomResizedCrop(1024),
+    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    transforms.Normalize((0.48145466, 0.4578275, 0.40821073),
+                         (0.26862954, 0.26130258, 0.27577711)),
+])
+
+test_transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.48145466, 0.4578275, 0.40821073),
+                         (0.26862954, 0.26130258, 0.27577711)),
+])
 
 
 def gen_plot(y_pred, y_label):
     """Create a pyplot plot and save to buffer."""
     fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(12, 2))
 
-    y_pred = (np.array(y_pred).flatten() > 0)
+    y_pred = (np.array(y_pred).flatten() > 0.5)
     y_label = np.array(y_label).flatten()
     acc = (y_pred == y_label).mean()
     f1 = f1_score(y_label, y_pred, average='weighted')
@@ -119,9 +134,9 @@ def train(model_type):
         i - 1 for i in goal_obj_index_list]]  # shape: 310 x 384
 
     # =========================================================== Define Dataloader ==================================================
-    data_folder = cfg.PRED.VIEW.PROCESSED_VIEW_SAVED_FOLDER
+    data_folder = cfg.PRED.VIEW.DENSELY_SAMPLED_LOCATIONS_SAVED_FOLDER
     dataset_train = get_all_view_dataset(
-        'train', data_folder, hm3d_to_lvis_dict, LVIS_dict)
+        'train', data_folder, hm3d_to_lvis_dict, LVIS_dict, train_transform)
     dataloader_train = data.DataLoader(dataset_train,
                                        batch_size=cfg.PRED.VIEW.BATCH_SIZE,
                                        num_workers=cfg.PRED.VIEW.NUM_WORKERS,
@@ -130,7 +145,7 @@ def train(model_type):
                                        )
 
     dataset_val = get_all_view_dataset(
-        'val', data_folder, hm3d_to_lvis_dict, LVIS_dict)
+        'val', data_folder, hm3d_to_lvis_dict, LVIS_dict, test_transform)
     dataloader_val = data.DataLoader(dataset_val,
                                      batch_size=cfg.PRED.VIEW.BATCH_SIZE,
                                      num_workers=cfg.PRED.VIEW.NUM_WORKERS,
@@ -161,7 +176,7 @@ def train(model_type):
     train_params = [{'params': model.parameters(), 'lr': cfg.PRED.VIEW.LR}]
     optimizer = optim.Adam(
         train_params, lr=cfg.PRED.VIEW.LR, betas=(0.9, 0.999))
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.1)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
 
     # Define Criterion
     # whether to use class balanced weights
@@ -169,6 +184,7 @@ def train(model_type):
     # criterion = nn.L1Loss()
     # criterion = nn.CrossEntropyLoss(
     #     weight=torch.tensor([1, 50]).float()).cuda()
+    criterion = nn.BCEWithLogitsLoss()
     best_test_loss = 1e10
 
     # ===================================================== Resuming checkpoint ====================================================
@@ -197,7 +213,7 @@ def train(model_type):
             print(f'dists.shape = {dists.shape}')
 
             images = images.cuda()
-            dists = dists.cuda()
+            dists = dists.cuda().float()
 
             # ================================================ compute loss =============================================
             if cfg.PRED.VIEW.MODEL_TYPE == 'resnet':
@@ -214,6 +230,7 @@ def train(model_type):
             output = output.view(-1)
             dists = dists.view(-1)
 
+            # loss = criterion(output, dists)
             loss = focal_loss(output, dists)
 
             # ================================================= compute gradient =================================================
@@ -236,28 +253,29 @@ def train(model_type):
 
         if epoch % cfg.PRED.VIEW.EVAL_INTERVAL == 0:
             model.eval()
-            test_loss = 0.0
+            test_loss = []
             iter_num = 0
 
-            y_pred = []
-            y_label = []
+            with torch.no_grad():
+                y_pred = np.zeros((0, 310))
+                y_label = np.zeros((0, 310))
 
-            sampled_batch_ids = random.choices(
-                range(len(dataloader_val)), k=10)
-            count_vis_img = 0
+                sampled_batch_ids = random.choices(
+                    range(len(dataloader_val)), k=10)
+                count_vis_img = 0
 
-            for idx_dl, batch in enumerate(dataloader_val):
-                print('epoch = {}, iter_num = {}'.format(epoch, iter_num))
-                images, bbox_list, goal_objs, dists = batch['rgb'], batch[
-                    'bbox'], batch['goal_obj'], batch['dist']
-                print(f'images.shape = {images.shape}')
-                print(f'dists.shape = {dists.shape}')
+                for idx_dl, batch in enumerate(dataloader_val):
+                    print('epoch = {}, iter_num = {}'.format(epoch, iter_num))
+                    images, bbox_list, goal_objs, dists = batch['rgb'], batch[
+                        'bbox'], batch['goal_obj'], batch['dist']
+                    print(f'images.shape = {images.shape}')
+                    print(f'dists.shape = {dists.shape}')
 
-                images = images.cuda()
-                dists = dists.cuda()
+                    images = images.cuda()
+                    dists = dists.cuda().float()
 
                 # ================================================ compute loss =============================================
-                with torch.no_grad():
+
                     if cfg.PRED.VIEW.MODEL_TYPE == 'resnet':
                         # batchsize x 1 x H x W
                         output = model(images, goal_objs)
@@ -268,66 +286,76 @@ def train(model_type):
                     elif cfg.PRED.VIEW.MODEL_TYPE == 'clip':
                         # batchsize x 1 x H x W
                         output = model(images, goal_objs)
-                print(f'output.shape = {output.shape}')
-                B, C = output.shape[:2]
-                output = output.view(-1)
-                dists = dists.view(-1)
-                loss = focal_loss(output, dists)
+                    print(f'output.shape = {output.shape}')
+                    B = images.shape[0]
+                    output = output.view(-1)
+                    dists = dists.view(-1)
+                    # loss = criterion(output, dists)
+                    loss = focal_loss(output, dists)
 
-                # concatenate the results
-                output = (output > 0).cpu().tolist()
-                dists = dists.cpu().tolist()
-                y_pred += output
-                y_label += dists
+                    # concatenate the results
+                    output = output.view(B, -1)
+                    dists = dists.view(B, -1)
+                    print(f'output.shape = {output.shape}')
+                    output = output.cpu().numpy()
+                    dists = dists.cpu().numpy()
 
-                if idx_dl in sampled_batch_ids:
-                    output = np.array(output)
-                    dists = np.array(dists)
-                    fig = gen_plot(output, dists)
-                    writer.add_figure(
-                        f'val/sampled_result_{count_vis_img}', fig)
-                    count_vis_img += 1
+                    y_pred = np.concatenate((y_pred, output), axis=0)
+                    y_label = np.concatenate((y_label, dists), axis=0)
 
-                test_loss += loss.item()
-                print('Test loss: %.3f' % (test_loss / (iter_num + 1)))
-                writer.add_scalar('val/total_loss_iter', loss.item(),
-                                  iter_num + len(dataloader_val) * epoch)
+                    if idx_dl in sampled_batch_ids:
+                        output = np.array(output)
+                        dists = np.array(dists)
+                        fig = gen_plot(output, dists)
+                        writer.add_figure(
+                            f'val/sampled_result_{count_vis_img}', fig)
+                        count_vis_img += 1
 
-                iter_num += 1
+                    test_loss.append(loss.item())
+                    print(f'Test loss: {test_loss[-1]:.3f}')
+                    writer.add_scalar('val/total_loss_iter', test_loss[-1],
+                                      iter_num + len(dataloader_val) * epoch)
+
+                    iter_num += 1
 
             # Fast test during the training
+            test_loss = np.mean(test_loss)
             writer.add_scalar('val/total_loss_epoch', test_loss, epoch)
 
-            # compuate acc
-            y_pred = (np.array(y_pred).flatten() > 0)
-            y_label = np.array(y_label).flatten()
-            # print(f'y_pred.shape = {y_pred.shape}')
-            acc = (y_pred.reshape(-1, 310) ==
-                   y_label.reshape(-1, 310)).mean(axis=0).mean()
-            f1 = f1_score(y_label, y_pred, average='macro')
-            writer.add_scalar('val/acc_epoch', acc, epoch)
-            writer.add_scalar('val/f1_score', f1, epoch)
+            # compuate mAP per class
+            aps = []
+            for idx_class in range(0, y_label.shape[1]):
+                class_label = y_label[:, idx_class]
+                class_pred = y_pred[:, idx_class]
+                if class_label.sum() > 0:
+                    ap = average_precision_score(
+                        class_label, class_pred)
+                    print(
+                        f'-------  Class: {idx_class}     AP: {ap:.4f}  -------')
+                    aps.append(ap)
+
+            mAP = np.mean(aps)
+            writer.add_scalar('val/mAP', mAP, epoch)
 
             print('Validation:')
-            print('[Epoch: %d, numImages: %5d]' %
-                  (epoch, iter_num * cfg.PRED.VIEW.BATCH_SIZE))
-            print(f'Loss: {test_loss:.3f}, ACC: {acc:.3f}, F1-score: {f1:.3f}')
+            print(f'Epoch: {epoch}, numImages: {len(dataloader_val)}')
+            print(f'Loss: {test_loss:.3f}, mAP: {mAP:.3f}')
 
             saver.save_checkpoint({
-                'epoch': epoch + 1,
+                # 'epoch': epoch + 1,
                 'state_dict': model.state_dict(),
-                'optimizer': optimizer.state_dict(),
-                'loss': test_loss,
+                # 'optimizer': optimizer.state_dict(),
+                # 'loss': test_loss,
             }, filename='checkpoint.pth.tar')
 
             if test_loss < best_test_loss:
                 best_test_loss = test_loss
 
                 saver.save_checkpoint({
-                    'epoch': epoch + 1,
+                    # 'epoch': epoch + 1,
                     'state_dict': model.state_dict(),
-                    'optimizer': optimizer.state_dict(),
-                    'loss': test_loss,
+                    # 'optimizer': optimizer.state_dict(),
+                    # 'loss': test_loss,
                 }, filename='best_checkpoint.pth.tar')
 
         scheduler.step()

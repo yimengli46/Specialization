@@ -105,9 +105,9 @@ class view_dataset(data.Dataset):
         tensor_rgb = self.preprocess(rgb_img)
         # goal_obj = goal_category
         goal_obj = []
-        # for goal_obj_index in self.goal_obj_index_list:
-        #     synonyms = self.lvis_id_to_lvis_cat_names_dict[goal_obj_index]
-        #     goal_obj.append(random.choice(synonyms))
+        for goal_obj_index in self.goal_obj_index_list:
+            synonyms = self.lvis_id_to_lvis_cat_names_dict[goal_obj_index]
+            goal_obj.append(random.choice(synonyms))
 
         # compute dist
         mat_dist = fron['mat_dist_to_cat']

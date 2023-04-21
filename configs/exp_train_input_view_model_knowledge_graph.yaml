@@ -6,7 +6,7 @@ PRED:
     MODEL_TYPE: 'knowledge_graph'
     BATCH_SIZE: 3
     DEVICE: cuda
-    EPOCHS: 6
+    EPOCHS: 25
     EVAL_INTERVAL: 1
     FLAG_VISUALIZE_PRED_LABELS: False
     LOSS_TYPE: L1
@@ -17,7 +17,9 @@ PRED:
     NUM_PROCESS: 1
     GEN_SAMPLES_SAVED_FOLDER: 'output/training_data_input_view_1000samples'
     PROCESSED_VIEW_SAVED_FOLDER: 'output/training_preprocessed_view_1000samples'
+    DENSELY_SAMPLED_LOCATIONS_SAVED_FOLDER: 'output/training_data_input_view_by_densely_sample_locations'
     EPS_SAVE_GAP: 20
+    MULTILABEL_MODE: 'detected_and_nearby'
 
 
 SAVE:
@@ -29,4 +31,4 @@ SEM_MAP:
   FLAG_VISUALIZE_EGO_OBS: False
 
 SENSOR:
-  OBS_WIDTH: 512
+  OBS_WIDTH: 1024

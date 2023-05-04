@@ -12,7 +12,7 @@ import os
 import glob
 import torch
 import torch.nn.functional as F
-from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize, InterpolationMode
+from torchvision import transforms
 from PIL import Image
 
 
@@ -39,7 +39,7 @@ def process_lvis_dict(hm3d_to_lvis_dict, LVIS_dict):
 class view_dataset(data.Dataset):
 
     def __init__(self, split, scene_name, floor_id=0, data_folder='', hm3d_to_lvis_dict=None,
-                 LVIS_dict=None, transform=None):
+                 LVIS_dict=None, transform=None, bbox_type='gt'):
         # self.random = Random(cfg.GENERAL.RANDOM_SEED)
 
         self.split = split
@@ -47,6 +47,10 @@ class view_dataset(data.Dataset):
         self.floor_id = floor_id
 
         self.data_folder = data_folder
+        self.bbox_type = bbox_type
+
+        if self.bbox_type == 'Detic':
+            self.detection_folder = 'output/Detic_detections_of_input_view_by_densely_sample_locations'
 
         self.hm3d_to_lvis_dict = hm3d_to_lvis_dict
         self.LVIS_dict = LVIS_dict
@@ -95,6 +99,7 @@ class view_dataset(data.Dataset):
 
     def __getitem__(self, index):
         sample_name = self.sample_name_list[index]
+        # print(f'scene_name = {self.scene_name}, sample_name = {sample_name}')
 
         # ================= read the explored map ====================
         with bz2.BZ2File(f'{self.data_folder}/{self.scene_name}_{self.floor_id}/{sample_name}.pbz2', 'rb') as fp:
@@ -122,44 +127,70 @@ class view_dataset(data.Dataset):
         # print(f'tensor_dist = {tensor_dist.shape}')
 
         # compute the bbox
-        sseg_img = fron['sseg']
-        img_hm3d_cat_index_list = np.unique(sseg_img)
-        bbox_list = []
-        # create image coordinates
-        coords = get_img_coordinates(sseg_img)
-        # convert sseg_img into bbox
-        for hm3d_cat_index in img_hm3d_cat_index_list:
-            lvis_cat_name = self.idx2cat_dict[hm3d_cat_index]
-            # if current category is in the goal category list
-            if lvis_cat_name in self.goal_category_set:
-                # print(f'cat_name = {lvis_cat_name}')
-                # create binary image for current category index
-                cat_binary_map = np.zeros(
-                    sseg_img.shape, dtype=np.int16)
-                cat_binary_map[sseg_img == hm3d_cat_index] = 1
-                instance_label, num_ins = skimage.measure.label(
-                    cat_binary_map, background=0, connectivity=1, return_num=True)
-                # print(f'num_ins = {num_ins}')
-                # plt.imshow(cat_binary_map)
-                # plt.show()
-                # create a bbox for each mask
-                for idx_ins in range(1, num_ins + 1):
-                    mask_ins = (instance_label == idx_ins)
-                    mask_coords = coords[mask_ins]
-                    x1 = np.min(mask_coords[:, 0])
-                    x2 = np.max(mask_coords[:, 0])
-                    y1 = np.min(mask_coords[:, 1])
-                    y2 = np.max(mask_coords[:, 1])
-                    cat_id = self.LVIS_dict['rowid2catid_dict'][self.LVIS_dict['cat_synonyms'].index(
-                        lvis_cat_name)]
-                    if x2 - x1 > 5 and y2 - y1 > 5:
-                        bbox_list.append([x1, y1, x2, y2, cat_id])
+        if self.bbox_type == 'gt':
+            sseg_img = fron['sseg']
+            img_hm3d_cat_index_list = np.unique(sseg_img)
+            bbox_list = []
+            # create image coordinates
+            coords = get_img_coordinates(sseg_img)
+            # convert sseg_img into bbox
+            for hm3d_cat_index in img_hm3d_cat_index_list:
+                lvis_cat_name = self.idx2cat_dict[hm3d_cat_index]
+                # if current category is in the goal category list
+                if lvis_cat_name in self.goal_category_set:
+                    # print(f'cat_name = {lvis_cat_name}')
+                    # create binary image for current category index
+                    cat_binary_map = np.zeros(
+                        sseg_img.shape, dtype=np.int16)
+                    cat_binary_map[sseg_img == hm3d_cat_index] = 1
+                    instance_label, num_ins = skimage.measure.label(
+                        cat_binary_map, background=0, connectivity=1, return_num=True)
+                    # print(f'num_ins = {num_ins}')
+                    # plt.imshow(cat_binary_map)
+                    # plt.show()
+                    # create a bbox for each mask
+                    for idx_ins in range(1, num_ins + 1):
+                        mask_ins = (instance_label == idx_ins)
+                        mask_coords = coords[mask_ins]
+                        x1 = np.min(mask_coords[:, 0])
+                        x2 = np.max(mask_coords[:, 0])
+                        y1 = np.min(mask_coords[:, 1])
+                        y2 = np.max(mask_coords[:, 1])
+                        cat_id = self.LVIS_dict['rowid2catid_dict'][self.LVIS_dict['cat_synonyms'].index(
+                            lvis_cat_name)]
+                        if x2 - x1 > 5 and y2 - y1 > 5:
+                            bbox_list.append([x1, y1, x2, y2, cat_id])
+        elif self.bbox_type == 'Detic':
+            with bz2.BZ2File(f'{self.detection_folder}/{self.split}/{self.scene_name}_{self.floor_id}/{sample_name}_Detic.pbz2', 'rb') as fp:
+                pred_dict = cPickle.load(fp)
+                num_instances = pred_dict['num_instances']
+                pred_boxes = pred_dict['pred_boxes']
+                scores = pred_dict['scores']
+                pred_classes = pred_dict['pred_classes']
+
+            bbox_list = []
+            # go through from smallest conf to largest conf
+            for instance_idx in range(num_instances - 1, -1, -1):
+                cat_id = self.LVIS_dict['rowid2catid_dict'][self.LVIS_dict['cat_synonyms'].index(
+                    self.goal_obj_list[pred_classes[instance_idx]])]
+                # print(
+                #     f'pred_classes = {self.goal_obj_list[pred_classes[instance_idx]]}')
+                # print(f'cat_id = {cat_id}')
+                bbox = pred_boxes[instance_idx]
+                x1 = int(bbox[0])
+                y1 = int(bbox[1])
+                x2 = int(bbox[2])
+                y2 = int(bbox[3])
+                bbox_list.append([x1, y1, x2, y2, cat_id])
+        else:
+            raise NotImplementedError(
+                f"bbox type {self.bbox_type} not implemented.")
 
         return {'rgb': tensor_rgb, 'bbox': bbox_list, 'goal_obj': goal_obj, 'dist': tensor_dist,
                 'original_img': rgb_img}
 
 
-def get_all_view_dataset(split, data_folder, hm3d_to_lvis_dict, LVIS_dict, transforms=None):
+def get_all_view_dataset(split, data_folder, hm3d_to_lvis_dict, LVIS_dict, transforms=None, bbox_type='gt'):
     # read the scene folders
     scene_list = sorted(
         next(os.walk(f'{data_folder}/{split}'))[1])
@@ -168,7 +199,7 @@ def get_all_view_dataset(split, data_folder, hm3d_to_lvis_dict, LVIS_dict, trans
     for scene_floor in scene_list:
         scene_name, floor_id = scene_floor.split('_')
         view_ds = view_dataset(split, scene_name, floor_id,
-                               f'{data_folder}/{split}', hm3d_to_lvis_dict, LVIS_dict, transforms)
+                               f'{data_folder}/{split}', hm3d_to_lvis_dict, LVIS_dict, transforms, bbox_type)
         ds_list.append(view_ds)
 
     concat_ds = data.ConcatDataset(ds_list)
@@ -198,12 +229,11 @@ def my_collate(batch):
 
 if __name__ == "__main__":
 
-    cfg.merge_from_file('configs/exp_train_input_view_model_resnet.yaml')
+    cfg.merge_from_file(
+        'configs/exp_train_input_view_multilabel_model_context_matrix.yaml')
     cfg.freeze()
 
-    split = 'train'
-    scene_name = '00009-vLpv2VX547B'
-    floor_ids = [0, 1]
+    split = 'val'
 
     data_folder = cfg.PRED.VIEW.DENSELY_SAMPLED_LOCATIONS_SAVED_FOLDER
 
@@ -218,8 +248,15 @@ if __name__ == "__main__":
         # lvis_rowid_to_catid_dict = LVIS_dict['rowid2catid_dict']
         # lvis_cat_embedding = LVIS_dict['embedding']
 
+    test_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.48145466, 0.4578275, 0.40821073),
+                             (0.26862954, 0.26130258, 0.27577711)),
+    ])
+
     concat_ds = get_all_view_dataset(
-        'train', data_folder, hm3d_to_lvis_dict, LVIS_dict)
+        split, data_folder, hm3d_to_lvis_dict, LVIS_dict, test_transform, 'Detic')
 
     for i in range(len(concat_ds)):
+        print(f'i = {i}')
         a = concat_ds[i]

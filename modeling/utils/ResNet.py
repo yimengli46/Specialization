@@ -166,21 +166,20 @@ class knowledge_graph(nn.Module):
         self.lvis_cat_synonyms_list = lvis_cat_synonyms_list
         self.lvis_cat_synonyms_embedding = lvis_cat_synonyms_embedding
         self.goal_obj_index_embeddings = torch.tensor(
-            goal_obj_index_embeddings).float().unsqueeze(0).detach()  # 1 x 310 x 384
+            goal_obj_index_embeddings).float().detach()  # 310 x 384
         self.goal_obj_index_list = goal_obj_index_list
 
-        self.W0 = nn.Linear(694, 256, bias=False)
-        self.W1 = nn.Linear(256, 256, bias=False)
-        self.W2 = nn.Linear(256, 1, bias=False)
+        self.W0 = nn.Linear(694, 694, bias=False)
+        self.W1 = nn.Linear(694, 694, bias=False)
+        self.W2 = nn.Linear(694, 5, bias=False)
+        self.W3 = nn.Linear(10, 1, bias=False)
 
-        self.fc_kg = nn.Linear(self.n, 256)
-        self.fc1 = nn.Linear(256 + 384, 256)
-        self.fc2 = nn.Linear(256, 1)
+        self.fc1 = nn.Linear(self.n, 310)
+        self.fc2 = nn.Linear(310, 1)
 
     def forward(self, objbb_list, target_obj_list):
         B = len(objbb_list)
-        class_onehot = torch.zeros(
-            B, 1, self.n).float()  # B x 1 x n
+        class_onehot = torch.zeros(B, 1, self.n).float()  # B x 1 x n
 
         for idx, objbb in enumerate(objbb_list):
             for bbox in objbb:
@@ -188,42 +187,68 @@ class knowledge_graph(nn.Module):
                 ind = self.goal_obj_index_list.index(cat_id)
                 class_onehot[idx, 0, ind] = 1
 
-        class_node_embedding = torch.cat((class_onehot.repeat(
-            1, self.n, 1), self.goal_obj_index_embeddings.repeat(B, 1, 1)), dim=2).cuda()  # B x 310 x 694
+        class_node_embedding = torch.cat((class_onehot.expand(
+            -1, self.n, -1), self.goal_obj_index_embeddings.unsqueeze(0).expand(B, -1, -1)), dim=2).cuda()  # B x 310 x 694
         # print(f'class_node_embedding.shape = {class_node_embedding.shape}')
 
-        x = torch.bmm(self.A.repeat(B, 1, 1),
+        x = torch.bmm(self.A.unsqueeze(0).expand(B, -1, -1),
                       class_node_embedding)  # B x 310 x 694
         # print(f'x.shape = {x.shape}')
         x = F.relu(self.W0(x))
-        x = torch.bmm(self.A.repeat(B, 1, 1), x)
+        x = torch.bmm(self.A.unsqueeze(0).expand(B, -1, -1), x)
         x = F.relu(self.W1(x))
-        x = torch.bmm(self.A.repeat(B, 1, 1), x)
-        x = F.relu(self.W2(x))  # B x 310 x 1
-        # print(f'x.shape = {x.shape}')
-        x = x.view(B, self.n)  # B x 310
-        # print(f'x.shape = {x.shape}')
-        x = F.relu(self.fc_kg(x))  # B x 256
+        x = torch.bmm(self.A.unsqueeze(0).expand(B, -1, -1), x)
+        x = F.relu(self.W2(x))  # B x 310 x 5
         # print(f'x.shape = {x.shape}')
 
-        target_embedding = np.zeros((B, 310, 384), dtype=np.float32)
-        for idx0, target_obj in enumerate(target_obj_list):
-            for idx1, target in enumerate(target_obj):
-                target_embedding[idx0, idx1] = self.lvis_cat_synonyms_embedding[self.lvis_cat_synonyms_list.index(
-                    target)]
-        target_embedding = torch.tensor(
-            target_embedding).float().cuda()  # B x 310 x 384
+        # ================ build objstate
+        objstate = torch.zeros(B, self.n, 4).float()
+        # compute the first 4 columns of the context matrix
+        for idx, objbb in enumerate(objbb_list):
+            for bbox in objbb:
+                x1, y1, x2, y2, cat_id = bbox
+                ind = self.goal_obj_index_list.index(cat_id)
+                objstate[idx][ind][0] = 1
+                objstate[idx][ind][1] = (
+                    x1 / 2. + x2 / 2.) / cfg.SENSOR.OBS_WIDTH
+                objstate[idx][ind][2] = (
+                    y1 / 2. + y2 / 2.) / cfg.SENSOR.OBS_WIDTH
+                objstate[idx][ind][3] = abs(x2 - x1) * abs(y2 - y1) / \
+                    (cfg.SENSOR.OBS_WIDTH * cfg.SENSOR.OBS_WIDTH)
+        objstate = objstate.unsqueeze(
+            1).expand(-1, self.n, -1, -1)  # B x 310 x 310 x 4
 
-        # target_embedding = np.stack([np.stack([self.lvis_cat_synonyms_embedding[self.lvis_cat_synonyms_list.index(
-        #     target_obj)] for target_obj in target_obj_list]) for target_obj_list in target_obj_list_list])  # B x 384
-        # target_embedding = torch.tensor(
-        #     target_embedding).float().cuda()  # B x 384
+        # compute the last column of the context matrix
+        cos = torch.nn.CosineSimilarity(dim=1, eps=1e-6)
+        embedding_similarity = torch.zeros(
+            B, self.n, self.n).float()  # B x 310 x 310
+        for idx in range(B):
+            target_embedding = np.stack([self.lvis_cat_synonyms_embedding[self.lvis_cat_synonyms_list.index(
+                target_obj)] for target_obj in target_obj_list[idx]])  # 310 x 384
+            target_embedding = torch.tensor(
+                target_embedding).float()  # 310 x 384
+            goal_obj_embedding_similarity = cos(self.goal_obj_index_embeddings,
+                                                target_embedding).float()
+            embedding_similarity[idx] = goal_obj_embedding_similarity
+            # embedding_similarity[idx] = torch.eye(self.n).float()
+        # print(
+        #     f'self.goal_obj_index_embeddings.shape = {self.goal_obj_index_embeddings.shape}')
+        # print(f'embedding_sim.shape = {embedding_similarity.shape}')
 
-        x = x.view(B, 1, -1)
-        z = torch.cat((x.expand(B, 310, 256), target_embedding), dim=2)
+        objstate = torch.cat(
+            (objstate, embedding_similarity.unsqueeze(3)), dim=3).cuda()  # B x 310 x 310 x 5
 
-        z = F.relu(self.fc1(z))
-        y_pred = self.fc2(z)
+        # ================== concatenate the two
+        x = x.unsqueeze(1).expand(-1, self.n, -1, -1)  # B x 310 x 310 x 5
+        x = torch.cat((x, objstate), dim=2)  # B x 310 x 310 x 10
+        x = x.view(B * self.n, self.n, -1)
+        # print(f'x.shape = {x.shape}')
+        x = torch.bmm(self.A.unsqueeze(0).expand(B * self.n, -1, -1), x)
+        x = F.relu(self.W3(x))  # (B x 310) x 310 x 1
+        x = x.view(B * self.n, -1)
+
+        x = F.relu(self.fc1(x))
+        y_pred = self.fc2(x)
 
         return y_pred
 

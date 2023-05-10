@@ -116,6 +116,7 @@ class view_dataset(data.Dataset):
 
         # compute dist
         mat_dist = fron['mat_dist_to_cat']
+        gt_mat_dist = mat_dist.copy()
         if cfg.PRED.VIEW.MULTILABEL_MODE == 'detected_only':
             mask = mat_dist > 1
             mat_dist[mask] = 0
@@ -127,6 +128,7 @@ class view_dataset(data.Dataset):
         # print(f'tensor_dist = {tensor_dist.shape}')
 
         # compute the bbox
+        detector_pred = np.zeros((1, 310))
         if self.bbox_type == 'gt':
             sseg_img = fron['sseg']
             img_hm3d_cat_index_list = np.unique(sseg_img)
@@ -160,6 +162,8 @@ class view_dataset(data.Dataset):
                             lvis_cat_name)]
                         if x2 - x1 > 5 and y2 - y1 > 5:
                             bbox_list.append([x1, y1, x2, y2, cat_id])
+                            ind = self.goal_obj_index_list.index(cat_id)
+                            detector_pred[0, ind] = 1
         elif self.bbox_type == 'Detic':
             with bz2.BZ2File(f'{self.detection_folder}/{self.split}/{self.scene_name}_{self.floor_id}/{sample_name}_Detic.pbz2', 'rb') as fp:
                 pred_dict = cPickle.load(fp)
@@ -182,12 +186,14 @@ class view_dataset(data.Dataset):
                 x2 = int(bbox[2])
                 y2 = int(bbox[3])
                 bbox_list.append([x1, y1, x2, y2, cat_id])
+                ind = self.goal_obj_index_list.index(cat_id)
+                detector_pred[0, ind] = scores[instance_idx]
         else:
             raise NotImplementedError(
                 f"bbox type {self.bbox_type} not implemented.")
 
         return {'rgb': tensor_rgb, 'bbox': bbox_list, 'goal_obj': goal_obj, 'dist': tensor_dist,
-                'original_img': rgb_img}
+                'original_img': rgb_img, 'original_dist': gt_mat_dist, 'detector_pred': detector_pred}
 
 
 def get_all_view_dataset(split, data_folder, hm3d_to_lvis_dict, LVIS_dict, transforms=None, bbox_type='gt'):
@@ -223,6 +229,12 @@ def my_collate(batch):
 
     batch_original_img = [dict['original_img'] for dict in batch]
     output_dict['original_img'] = batch_original_img
+
+    batch_original_dist = [dict['original_dist'] for dict in batch]
+    output_dict['original_dist'] = np.concatenate(batch_original_dist, axis=0)
+
+    batch_detector_pred = [dict['detector_pred'] for dict in batch]
+    output_dict['detector_pred'] = np.concatenate(batch_detector_pred, axis=0)
 
     return output_dict
 

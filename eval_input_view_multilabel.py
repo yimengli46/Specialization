@@ -34,8 +34,13 @@ test_transform = transforms.Compose([
 
 
 # def test(model_type):
-model_type = 'context_matrix'  # 'knowledge_graph'  # 'context_matrix'  # 'resnet'
-checkpoint_file = 'output/model_weights_input_view/context_matrix/experiment_3/best_checkpoint.pth.tar'
+model_type = 'knowledge_graph'  # 'knowledge_graph'  # 'context_matrix'  # 'resnet'
+
+if model_type == 'context_matrix':
+    checkpoint_file = 'output/model_weights_input_view/context_matrix/experiment_3/best_checkpoint.pth.tar'
+elif model_type == 'knowledge_graph':
+    checkpoint_file = 'output/model_weights_input_view/knowledge_graph/experiment_13/best_checkpoint.pth.tar'
+
 bbox_type = 'Detic'  # Detic, gt
 
 if model_type == 'resnet':
@@ -132,6 +137,8 @@ iter_num = 0
 with torch.no_grad():
     y_pred = np.zeros((0, 310))
     y_label = np.zeros((0, 310))
+    original_dist_all = np.zeros((0, 310))
+    detector_pred_all = np.zeros((0, 310))
 
     sampled_batch_ids = random.choices(
         range(len(dataloader_val)), k=10)
@@ -139,8 +146,8 @@ with torch.no_grad():
 
     for idx_dl, batch in enumerate(dataloader_val):
         print('iter_num = {}'.format(iter_num))
-        images, bbox_list, goal_objs, dists = batch['rgb'], batch[
-            'bbox'], batch['goal_obj'], batch['dist']
+        images, bbox_list, goal_objs, dists, original_dist, detector_pred = batch['rgb'], batch[
+            'bbox'], batch['goal_obj'], batch['dist'], batch['original_dist'], batch['detector_pred']
         print(f'images.shape = {images.shape}')
         print(f'dists.shape = {dists.shape}')
 
@@ -171,6 +178,10 @@ with torch.no_grad():
 
         y_pred = np.concatenate((y_pred, output), axis=0)
         y_label = np.concatenate((y_label, dists), axis=0)
+        original_dist_all = np.concatenate(
+            (original_dist_all, original_dist), axis=0)
+        detector_pred_all = np.concatenate(
+            (detector_pred_all, detector_pred), axis=0)
 
         iter_num += 1
 
@@ -192,7 +203,9 @@ print(f'mAP = {mAP}')
 results_dict = {}
 results_dict['y_pred'] = y_pred
 results_dict['y_label'] = y_label
-with bz2.BZ2File(f'output/multilabel_pred_results_input_{bbox_type}_bbox.pbz2', 'w') as fp:
+results_dict['original_dist'] = original_dist_all
+results_dict['detector_pred'] = detector_pred_all
+with bz2.BZ2File(f'output/multilabel_pred_results_model_{model_type}_bbox_{bbox_type}.pbz2', 'w') as fp:
     cPickle.dump(
         results_dict,
         fp

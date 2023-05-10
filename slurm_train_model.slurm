@@ -23,8 +23,8 @@
 ## Specify how much time your job needs. (default: see partition above)
 #SBATCH --time=5-00:00   # Total time needed for job: Days-Hours:Minutes
 
-#SBATCH --gres=gpu:2
-#SBATCH --nodelist=NODE078
+#SBATCH --gres=gpu:1
+#SBATCH --nodelist=NODE077
 
 #SBATCH --cpus-per-task 24
 
@@ -36,7 +36,11 @@ module load gcc/7.5.0
 source /scratch/yli44/env_specialization/bin/activate
 
 ## Run your program or script
-python train_input_view_multilabel.py --model=resnet
-#python train_input_view.py --model=context_matrix
-#python train_input_view.py --model=knowledge_graph
+#python train_input_view_multilabel.py --model=resnet
+#python train_input_view_multilabel.py --model=cnn
+#python train_input_view_multilabel.py --model=context_matrix
+#python train_input_view_multilabel.py --model=knowledge_graph
 #python train_input_view.py --model=clip
+#python train_input_view_multilabel.py --model=cm_and_kg
+#python train_input_view.py --model=context_matrix
+python train_input_view.py --model=knowledge_graph

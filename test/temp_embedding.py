@@ -10,9 +10,11 @@ import bz2
 import _pickle as cPickle
 import matplotlib.pyplot as plt
 from modeling.utils.baseline_utils import apply_color_to_map
-from modeling.utils.ResNet import resnet, context_matrix, knowledge_graph
+from modeling.utils.ResNet import resnet, context_matrix, knowledge_graph, clip_fc
 import skimage.measure
 import matplotlib.patches as patches
+from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize, InterpolationMode
+from PIL import Image
 
 
 def get_img_coordinates(img):
@@ -24,12 +26,22 @@ def get_img_coordinates(img):
     return coords
 
 
+def _transform(n_px):
+    return Compose([
+        Resize(n_px, interpolation=InterpolationMode.BICUBIC),
+        CenterCrop(n_px),
+        ToTensor(),
+        Normalize((0.48145466, 0.4578275, 0.40821073),
+                  (0.26862954, 0.26130258, 0.27577711)),
+    ])
+
+
 split = 'train'
 scene_name = '00009-vLpv2VX547B'
 floor_id = 0
 step_id = 10
 # 'knowledge_graph'  # 'context_matrix'  # 'resnet'
-embedding_type = 'resnet'
+embedding_type = 'clip'
 target_cat = 'toy'
 
 data_folder = 'output/training_data_input_view_1000samples/train'
@@ -116,6 +128,18 @@ if embedding_type == 'resnet':
     model = model.cuda()
     with torch.no_grad():
         embedding = model(tensor_img, [target_cat])
+elif embedding_type == 'clip':
+    # tensor_img = torch.tensor(
+    #     rgb_img, dtype=torch.float32).unsqueeze(0).permute(0, 3, 1, 2).cuda()
+    preprocess = _transform(224)
+    rgb_img = Image.fromarray(rgb_img)
+    tensor_img = preprocess(rgb_img).unsqueeze(0).cuda()
+    #assert 1 == 2
+    model = clip_fc()
+    model = model.cuda()
+    with torch.no_grad():
+        embedding = model(tensor_img, [target_cat])
+
 elif embedding_type == 'context_matrix':
     model = context_matrix(lvis_cat_synonyms_list, lvis_cat_synonyms_embedding,
                            goal_obj_index_list, goal_obj_index_embeddings)

@@ -65,8 +65,8 @@ for scene_floor in scene_list:
 
         for i in range(len(idx_pos)):
             a = idx_pos[i]
-            mask_negative = cooccurrence_matrix[i, :, i_sample] == -1
-            cooccurrence_matrix[i, mask_negative, i_sample] = 0
+            mask_negative = cooccurrence_matrix[a, :, i_sample] == -1
+            cooccurrence_matrix[a, mask_negative, i_sample] = 0
 
     np.save(
         f'{saved_folder}/co_matrix_{scene_name}_{floor_id}.npy', cooccurrence_matrix)

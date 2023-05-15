@@ -1,5 +1,5 @@
 '''
-run clip to get room types
+run clip to get room types on a single scene
 '''
 import torch
 import clip
@@ -13,8 +13,8 @@ import glob
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model, preprocess = clip.load("ViT-B/32", device=device)
 
-room_types = ["a living room", "a bathroom", "a recreation room",
-              'a dining room', 'a kitchen', 'a bedroom', 'a laundry room', 'a pantry']
+room_types = ["a living room", "a bathroom", 'a dining room', 'a kitchen',
+              'a bedroom', 'a pantry', 'an office', 'a garage', 'outdoor', 'a corridor']
 text = clip.tokenize(room_types).to(device)
 
 data_folder = 'output/training_data_input_view_by_densely_sample_locations'

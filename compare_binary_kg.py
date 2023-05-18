@@ -33,11 +33,11 @@ def cosine_similarity(set1, set2):
 
 
 df = pd.DataFrame(
-    columns=['environment A', 'environment B', 'Jaccard Similarity'])  # , 'Cosine Similarity'])
+    columns=['environment A', 'environment B', 'Jaccard Similarity', 'Cosine Similarity'])
 df['environment A'] = df['environment A'].astype(str)
 df['environment B'] = df['environment B'].astype(str)
 df['Jaccard Similarity'] = df['Jaccard Similarity'].astype(float)
-# df['Cosine Similarity'] = df['Cosine Similarity'].astype(float)
+df['Cosine Similarity'] = df['Cosine Similarity'].astype(float)
 
 
 with bz2.BZ2File('output/knowledge_graph/LVIS_relationships.pbz2', 'rb') as fp:
@@ -63,6 +63,8 @@ adjacency_mat_HM3D_train = np.argwhere(
 
 sim = compute_jaccard_similarity(
     set(adjacency_mat_VG), set(adjacency_mat_HM3D_train))
+cosine_sim = cosine_similarity(
+    kg_VG.flatten(), binary_co_matrix_HM3D.flatten())
 print(f'sim between VG and HM3D val = {sim}')
 
 df = df.append(
@@ -70,6 +72,7 @@ df = df.append(
         'environment A': 'VisualGenome',
         'environment B': 'HM3D_train',
         'Jaccard Similarity': sim,
+        'Cosine Similarity': cosine_sim
     },
     ignore_index=True)
 
@@ -91,6 +94,8 @@ adjacency_mat_HM3D_val = np.argwhere(co_matrix_val_all.flatten() > 0).flatten()
 
 sim_VG_and_HM3Dval = compute_jaccard_similarity(
     set(adjacency_mat_VG), set(adjacency_mat_HM3D_val))
+cos_sim_VG_and_HM3Dval = cosine_similarity(
+    kg_VG.flatten(), co_matrix_val_all.flatten())
 print(f'sim between VG and {comatrix_name} = {sim_VG_and_HM3Dval}')
 
 df = df.append(
@@ -98,11 +103,14 @@ df = df.append(
         'environment A': 'VisualGenome',
         'environment B': f'HM3D_val_all',
         'Jaccard Similarity': sim_VG_and_HM3Dval,
+        'Cosine Similarity': cos_sim_VG_and_HM3Dval
     },
     ignore_index=True)
 
 sim_HM3Dtrain_and_HM3Dval = compute_jaccard_similarity(
     set(adjacency_mat_HM3D_train), set(adjacency_mat_HM3D_val))
+cos_sim_HM3Dtrain_and_HM3Dval = cosine_similarity(
+    binary_co_matrix_HM3D.flatten(), co_matrix_val_all.flatten())
 print(
     f'sim between HM3Dtrain and {comatrix_name} = {sim_HM3Dtrain_and_HM3Dval}')
 
@@ -111,6 +119,7 @@ df = df.append(
         'environment A': 'HM3d_train',
         'environment B': f'HM3D_val_all',
         'Jaccard Similarity': sim_HM3Dtrain_and_HM3Dval,
+        'Cosine Similarity': cos_sim_HM3Dtrain_and_HM3Dval
     },
     ignore_index=True)
 
@@ -119,6 +128,8 @@ count = 0
 count_HM3D_better = 0
 VG_sim_list = []
 HM3D_train_sim_list = []
+VG_cos_sim_list = []
+HM3D_train_cos_sim_list = []
 for comatrix_name in comatrix_name_list:
     co_matrix_val = np.load(
         f'{val_scene_co_matrix_folder}/{comatrix_name}.npy', allow_pickle=True)
@@ -147,6 +158,8 @@ for comatrix_name in comatrix_name_list:
 
     sim_VG_and_HM3Dval = compute_jaccard_similarity(
         set(adjacency_mat_VG), set(adjacency_mat_HM3D_val))
+    cos_sim_VG_and_HM3Dval = cosine_similarity(
+        kg_VG_clone.flatten(), co_matrix_val.flatten())
     print(f'sim between VG and {comatrix_name} = {sim_VG_and_HM3Dval}')
 
     df = df.append(
@@ -154,11 +167,14 @@ for comatrix_name in comatrix_name_list:
             'environment A': 'VisualGenome',
             'environment B': f'HM3D_val_{comatrix_name[10:]}',
             'Jaccard Similarity': sim_VG_and_HM3Dval,
+            'Cosine Similarity': cos_sim_VG_and_HM3Dval
         },
         ignore_index=True)
 
     sim_HM3Dtrain_and_HM3Dval = compute_jaccard_similarity(
         set(adjacency_mat_HM3D_train), set(adjacency_mat_HM3D_val))
+    cos_sim_HM3Dtrain_and_HM3Dval = cosine_similarity(
+        binary_co_matrix_HM3D_clone.flatten(), co_matrix_val.flatten())
     print(
         f'sim between HM3Dtrain and {comatrix_name} = {sim_HM3Dtrain_and_HM3Dval}')
 
@@ -167,11 +183,14 @@ for comatrix_name in comatrix_name_list:
             'environment A': 'HM3D_train',
             'environment B': f'HM3D_val_{comatrix_name[10:]}',
             'Jaccard Similarity': sim_HM3Dtrain_and_HM3Dval,
+            'Cosine Similarity': cos_sim_HM3Dtrain_and_HM3Dval
         },
         ignore_index=True)
 
     VG_sim_list.append(sim_VG_and_HM3Dval)
     HM3D_train_sim_list.append(sim_HM3Dtrain_and_HM3Dval)
+    VG_cos_sim_list.append(cos_sim_VG_and_HM3Dval)
+    HM3D_train_cos_sim_list.append(cos_sim_HM3Dtrain_and_HM3Dval)
 
     count += 1
     if sim_HM3Dtrain_and_HM3Dval > sim_VG_and_HM3Dval:
@@ -181,22 +200,25 @@ print(f'count = {count}, count_HM3D_better = {count_HM3D_better}')
 
 html = df.to_html(float_format=lambda x: '%.4f' % x)
 # write html to file
-html_f = open(f'{val_scene_co_matrix_folder}/Jaccard_val_objs_only.html', "w")
+html_f = open(
+    f'{val_scene_co_matrix_folder}/Jaccard_Cosine_val_objs_only.html', "w")
 html_f.write(f'<h5>Knowledge Graph Similarity</h5>')
 html_f.write(html)
 
 # compute mean
 df2 = pd.DataFrame(
-    columns=['environment A', 'environment B', 'Mean Jaccard Similarity'])
+    columns=['environment A', 'environment B', 'Mean Jaccard Similarity', 'Mean Cosine Similarity'])
 df2['environment A'] = df2['environment A'].astype(str)
 df2['environment B'] = df2['environment B'].astype(str)
 df2['Mean Jaccard Similarity'] = df2['Mean Jaccard Similarity'].astype(float)
+df2['Mean Cosine Similarity'] = df2['Mean Cosine Similarity'].astype(float)
 
 df2 = df2.append(
     {
         'environment A': 'VisualGenome',
         'environment B': f'HM3D_val_each_scene',
         'Mean Jaccard Similarity': np.array(VG_sim_list).mean(),
+        'Mean Cosine Similarity': np.array(VG_cos_sim_list).mean()
     },
     ignore_index=True)
 
@@ -205,6 +227,7 @@ df2 = df2.append(
         'environment A': 'HM3D_train',
         'environment B': f'HM3D_val_each_scene',
         'Mean Jaccard Similarity': np.array(HM3D_train_sim_list).mean(),
+        'Mean Cosine Similarity': np.array(HM3D_train_cos_sim_list).mean()
     },
     ignore_index=True)
 

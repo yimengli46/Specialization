@@ -13,6 +13,11 @@ import matplotlib as mpl
 from core import cfg
 
 
+def wrap_angle(angle):
+    """Wrap the angle to be from -pi to pi."""
+    return (angle + np.pi) % (2 * np.pi) - np.pi
+
+
 def minus_theta_fn(previous_theta, current_theta):
     """ compute angle current_theta minus angle previous theta."""
     result = current_theta - previous_theta
@@ -90,13 +95,13 @@ XYZ = K.inv((u, v))
     sseg_points = sseg_img[yv.flatten(), xv.flatten()].flatten()
 
     # ignore some classes points
-    #print('sseg_points.shape = {}'.format(sseg_points.shape))
+    # print('sseg_points.shape = {}'.format(sseg_points.shape))
     for c in ignored_classes:
         good = (sseg_points != c)
         sseg_points = sseg_points[good]
         points_3d = points_3d[:, good]
-    #print('after: sseg_points.shape = {}'.format(sseg_points.shape))
-    #print('after: points_3d.shape = {}'.format(points_3d.shape))
+    # print('after: sseg_points.shape = {}'.format(sseg_points.shape))
+    # print('after: points_3d.shape = {}'.format(points_3d.shape))
 
     return points_3d, sseg_points.astype(int)
 
@@ -127,8 +132,8 @@ def project_pixels_to_world_coords(sseg_img,
     # then compute the transformation matrix from goal frame to current frame
     # thransformation matrix is the camera2's extrinsic matrix
     tx, tz, theta = current_pose
-    #theta = -(theta + 0.5 * pi)
-    #theta = -theta
+    # theta = -(theta + 0.5 * pi)
+    # theta = -theta
     R_y = np.array([[cos(theta), 0, sin(theta)], [0, 1, 0],
                     [-sin(theta), 0, cos(theta)]])
     # used when I tilt the camera up/down
@@ -179,22 +184,22 @@ def project_pixels_to_world_coords(sseg_img,
     depth_points = current_depth[yv.flatten(), xv.flatten()].flatten()
     good = np.logical_and(depth_points > cfg.SENSOR.DEPTH_MIN,
                           depth_points < cfg.SENSOR.DEPTH_MAX)
-    #print(f'points_3d.shape = {points_3d.shape}')
+    # print(f'points_3d.shape = {points_3d.shape}')
     points_3d = points_3d[:, good]
-    #print(f'points_3d.shape = {points_3d.shape}')
+    # print(f'points_3d.shape = {points_3d.shape}')
 
     # pick x-row and z-row
     sseg_points = sseg_img[yv.flatten(), xv.flatten()].flatten()
     sseg_points = sseg_points[good]
 
     # ignore some classes points
-    #print('sseg_points.shape = {}'.format(sseg_points.shape))
+    # print('sseg_points.shape = {}'.format(sseg_points.shape))
     for c in ignored_classes:
         good = (sseg_points != c)
         sseg_points = sseg_points[good]
         points_3d = points_3d[:, good]
-    #print('after: sseg_points.shape = {}'.format(sseg_points.shape))
-    #print('after: points_3d.shape = {}'.format(points_3d.shape))
+    # print('after: sseg_points.shape = {}'.format(sseg_points.shape))
+    # print('after: points_3d.shape = {}'.format(points_3d.shape))
 
     return points_3d, sseg_points.astype(int)
 
@@ -217,11 +222,11 @@ given the mapping from instance to category ins2cat_dict.
     # print(detectron2_npy)
     SSeg = np.zeros((H, W), dtype=np.int32)  # 15 semantic categories
     idxs = list(range(len(detectron2_npy['classes'])))
-    #print(f'idxs = {idxs}')
+    # print(f'idxs = {idxs}')
     for j in idxs[::-1]:
         class_idx = detectron2_npy['classes'][j]
         score = detectron2_npy['scores'][j]
-        #print(f'j = {j}, class = {class_idx}')
+        # print(f'j = {j}, class = {class_idx}')
         if class_idx in list(
                 coco_categories_mapping.keys()) and score > det_thresh:
             idx = coco_categories_mapping[
@@ -274,7 +279,7 @@ def create_folder(folder_name, clean_up=False):
     if not flag_exist:
         print('{} folder does not exist, so create one.'.format(folder_name))
         os.makedirs(folder_name)
-        #os.makedirs(os.path.join(test_case_folder, 'observations'))
+        # os.makedirs(os.path.join(test_case_folder, 'observations'))
     else:
         print('{} folder already exists, so do nothing.'.format(folder_name))
         if clean_up:
@@ -429,9 +434,9 @@ def gen_arrow_head_marker(rot):
 
     # rotate the rot to the marker's coordinate system
     rotate_rot = -(rot - .5 * pi)
-    #print(f'rot in drawing is {math.degrees(rot)}, rotate_rot is {math.degrees(rotate_rot)}')
+    # print(f'rot in drawing is {math.degrees(rot)}, rotate_rot is {math.degrees(rotate_rot)}')
     rot = math.degrees(rotate_rot)
-    #print(f'visualized angle = {rot}')
+    # print(f'visualized angle = {rot}')
 
     arr = np.array([[.1, .3], [.1, -.3], [1, 0]])  # arrow shape
     angle = rot / 180 * np.pi

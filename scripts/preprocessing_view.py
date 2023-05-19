@@ -1,3 +1,8 @@
+'''
+preprocess the views generated through frontier exploration.
+compute the distance to target objects for each view.
+'''
+
 import numpy as np
 import matplotlib.pyplot as plt
 from modeling.utils.baseline_utils import read_map_npy, apply_color_to_map, read_occ_map_npy, get_img_coordinates

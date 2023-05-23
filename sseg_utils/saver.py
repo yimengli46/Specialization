@@ -7,9 +7,13 @@ from core import cfg
 
 class Saver(object):
 
-    def __init__(self, output_folder):
-        self.directory = os.path.join(
-            output_folder, cfg.PRED.VIEW.MODEL_TYPE)
+    def __init__(self, output_folder, exp_folder=None):
+        if exp_folder is None:
+            self.directory = os.path.join(
+                output_folder, cfg.PRED.VIEW.MODEL_TYPE)
+        else:
+            self.directory = os.path.join(
+                output_folder, exp_folder)
         self.runs = sorted(
             glob.glob(os.path.join(self.directory, 'experiment_*')))
         run_id = len(self.runs) if self.runs else 0

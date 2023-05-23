@@ -9,6 +9,8 @@ import scipy.sparse as sp
 import torch.nn.functional as F
 import clip
 
+from torch_geometric.nn import SAGEConv
+
 
 class cnn(nn.Module):
     def __init__(self, n_channel_in, n_class_out):
@@ -350,3 +352,41 @@ class clip_fc(nn.Module):
         y_pred = self.fc2(z)
 
         return y_pred
+
+
+class GCN(torch.nn.Module):
+    def __init__(self,
+                 num_classes=10,
+                 input_dim=1,
+                 num_features=256,
+                 hidden_size=256):
+
+        super(GCN, self).__init__()
+        torch.manual_seed(12345)
+
+        self.conv1 = SAGEConv(1, 8)
+        self.conv2 = SAGEConv(8, 8)
+        self.conv3 = SAGEConv(8, 1)
+
+        # Initialize classifiers
+        self.fc = nn.Linear(310, 310)
+
+    def forward(self, x, edge_index, batchsize=1):
+
+        # print(f'x.shape = {x.shape}')
+
+        # Embedding
+        h = self.conv1(x, edge_index)
+        h = F.relu(h)
+        h = self.conv2(h, edge_index)
+        h = F.relu(h)
+        h = self.conv3(h, edge_index)
+        h = F.relu(h)  # Final GNN embedding space.
+
+        # print(f'h.shape = {h.shape}')
+        h = h.view(batchsize, -1)
+
+        # Apply a final (linear) classifier.
+        node_out = self.fc(h)
+
+        return node_out

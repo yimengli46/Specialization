@@ -21,6 +21,17 @@ from modeling.utils.navigation_utils import change_brightness
 from skimage.draw import line
 import sknw
 from skimage.morphology import skeletonize
+import skimage.measure
+import matplotlib.patches as patches
+
+
+def get_img_coordinates(img):
+    H, W = img.shape[:2]
+    x = np.linspace(0, W - 1, W)
+    y = np.linspace(0, H - 1, H)
+    xv, yv = np.meshgrid(x, y)
+    coords = np.stack((xv, yv), axis=2)
+    return coords
 
 
 def build_env(split, scene_with_index, device_id=0):
@@ -304,28 +315,61 @@ class Data_Gen_View:
                             if line_vals.shape[0] < self.thresh_vicinity and np.all(line_vals):
                                 list_vicinity_instances.append(ins)
 
-                # ==================== build view object vector ======================
-                mat_dist_view_to_cat = np.zeros(
-                    (1, self.num_cats), dtype=np.int32)
+                # ==================== build view object vector from the map ======================
+                map_dist_view_to_cat = np.zeros((1, self.num_cats), dtype=np.int32)
+
+                # first write objects in the vicinity
+                # in case some objects are both detected and in the vicinity
+                for ins in list_vicinity_instances:
+                    cat = self.idx2cat_dict[ins['cat']]
+                    cat_index = self.LVIS_dict['rowid2catid_dict'][self.LVIS_dict['cat_synonyms'].index(
+                        cat)]
+                    map_dist_view_to_cat[0, self.goal_obj_index_list.index(
+                        cat_index)] = 2
 
                 # detected instance has class 1
                 for ins in list_detected_instances:
                     cat = self.idx2cat_dict[ins['cat']]
                     cat_index = self.LVIS_dict['rowid2catid_dict'][self.LVIS_dict['cat_synonyms'].index(
                         cat)]
-                    mat_dist_view_to_cat[0, self.goal_obj_index_list.index(
+                    map_dist_view_to_cat[0, self.goal_obj_index_list.index(
                         cat_index)] = 1
 
-                for ins in list_vicinity_instances:
-                    cat = self.idx2cat_dict[ins['cat']]
-                    cat_index = self.LVIS_dict['rowid2catid_dict'][self.LVIS_dict['cat_synonyms'].index(
-                        cat)]
-                    mat_dist_view_to_cat[0, self.goal_obj_index_list.index(
-                        cat_index)] = 2
+                # ======================== build view object vector from the detector =============
+                detector_dist_view_to_cat = np.zeros((1, self.num_cats), dtype=np.int32)
+
+                img_hm3d_cat_index_list = np.unique(sseg_img)
+                bbox_list = []
+                # create image coordinates
+                coords = get_img_coordinates(sseg_img)
+                # convert sseg_img into bbox
+                for hm3d_cat_index in img_hm3d_cat_index_list:
+                    lvis_cat_name = self.idx2cat_dict[hm3d_cat_index]
+                    # if current category is in the goal category list
+                    if lvis_cat_name in self.goal_category_set:
+                        # create binary image for current category index
+                        cat_binary_map = np.zeros(sseg_img.shape, dtype=np.int16)
+                        cat_binary_map[sseg_img == hm3d_cat_index] = 1
+                        instance_label, num_ins = skimage.measure.label(
+                            cat_binary_map, background=0, connectivity=1, return_num=True)
+                        # create a bbox for each mask
+                        for idx_ins in range(1, num_ins + 1):
+                            mask_ins = (instance_label == idx_ins)
+                            mask_coords = coords[mask_ins]
+                            x1 = np.min(mask_coords[:, 0])
+                            x2 = np.max(mask_coords[:, 0])
+                            y1 = np.min(mask_coords[:, 1])
+                            y2 = np.max(mask_coords[:, 1])
+                            cat_id = self.LVIS_dict['rowid2catid_dict'][self.LVIS_dict['cat_synonyms'].index(
+                                lvis_cat_name)]
+                            detector_dist_view_to_cat[0, self.goal_obj_index_list.index(cat_id)] = 1
+                            if x2 - x1 > 5 and y2 - y1 > 5:
+                                bbox_list.append([x1, y1, x2, y2, lvis_cat_name])
 
                 # ======================== save the data ======================
                 view_data = {}
-                view_data['mat_dist_to_cat'] = mat_dist_view_to_cat
+                view_data['map_dist_to_cat'] = map_dist_view_to_cat
+                view_data['gt_detector_dist_to_cat'] = detector_dist_view_to_cat
                 view_data['rgb'] = rgb_img
                 view_data['depth'] = depth_img
                 view_data['sseg'] = sseg_img
@@ -351,6 +395,13 @@ class Data_Gen_View:
 
                     ax1 = fig.add_subplot(gs[0, 0])
                     ax1.imshow(rgb_img)
+                    # draw the object detector bboxes
+                    for bbox in bbox_list:
+                        x1, y1, x2, y2, cat_name = bbox
+                        rect = patches.Rectangle(
+                            (x1, y1), x2 - x1, y2 - y1, linewidth=1, edgecolor='r', facecolor='none')
+                        ax1.add_patch(rect)
+                        ax1.text(x1, y1, cat_name, color='green')
                     ax1.get_xaxis().set_visible(False)
                     ax1.get_yaxis().set_visible(False)
                     ax1.set_title('egocentric view')

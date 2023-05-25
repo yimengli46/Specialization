@@ -101,6 +101,11 @@ class view_dataset(data.Dataset):
         sample_name = self.sample_name_list[index]
         # print(f'scene_name = {self.scene_name}, sample_name = {sample_name}')
 
+        # for finding obj and dist mis-alignment images
+        '''
+        temp_str = f'{self.data_folder}/{self.scene_name}_{self.floor_id}/{sample_name}'
+        return temp_str
+        '''
         # ================= read the explored map ====================
         with bz2.BZ2File(f'{self.data_folder}/{self.scene_name}_{self.floor_id}/{sample_name}.pbz2', 'rb') as fp:
             fron = cPickle.load(fp)

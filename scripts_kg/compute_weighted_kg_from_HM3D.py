@@ -15,7 +15,7 @@ import glob
 split = 'val'  # 'train'
 data_folder = 'output/training_data_input_view_by_densely_sample_locations'
 
-output_folder = 'output/weighted_kg'
+output_folder = 'output/weighted_kg/weighted_kg_obj_and_obj'
 if not os.path.exists(output_folder):
     os.mkdir(output_folder)
 

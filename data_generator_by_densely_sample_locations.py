@@ -375,6 +375,7 @@ class Data_Gen_View:
                 view_data['sseg'] = sseg_img
                 view_data['observed_area_flag'] = observed_area_flag
                 view_data['agent_map_pose'] = agent_map_pose
+                view_data['bbox'] = bbox_list
 
                 sample_name = str(count_view).zfill(5)
                 with bz2.BZ2File(f'{self.scene_folder}/{sample_name}.pbz2', 'w') as fp:

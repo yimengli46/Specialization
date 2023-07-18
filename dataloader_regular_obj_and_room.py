@@ -137,7 +137,7 @@ class view_dataset(data.Dataset):
         # create input tensor with shape num_targets x 10
         # create output tensor with shape num_targets
         num_targets = len(self.targets.keys())
-        num_features = 2 * len(self.common_objs_row_ids) + 2 * len(self.room_types)
+        num_features = 5
         input_tensor = torch.zeros((num_targets, num_features)).float()
         output_tensor = torch.zeros(num_targets)
 
@@ -149,6 +149,9 @@ class view_dataset(data.Dataset):
             f'output/CLIP_room_type/{self.split}/{self.scene_name}_{self.floor_id}/{sample_name}_clip_room_types.npy', allow_pickle=True)
 
         for idx_target, goal_obj in enumerate(list(self.targets.keys())):
+            arr_obj_cooccur = np.zeros(len(self.common_objs_row_ids))
+            arr_room_cooccur = np.zeros(len(self.room_types))
+
             # print(f'goal_obj = {goal_obj}')
             goal_obj_row_ids = [self.goal_obj_index_list.index(i) for i in self.targets[goal_obj]]
 
@@ -156,15 +159,21 @@ class view_dataset(data.Dataset):
                 cooccur_value = self.weighted_co_matrix_obj_and_obj[goal_obj_row_ids, common_obj_row_id].max()
                 i_common_obj_row_id = self.common_objs_row_ids.index(
                     common_obj_row_id)  # index of current obj_row_id in all the objects
-                input_tensor[idx_target, i_common_obj_row_id * 2] = 1
-                input_tensor[idx_target, i_common_obj_row_id * 2 + 1] = float(cooccur_value)
+                arr_obj_cooccur[i_common_obj_row_id] = cooccur_value
 
             for idx_room in range(len(self.room_types)):
                 cooccur_value = self.weighted_co_matrix_room_and_obj[idx_room, goal_obj_row_ids].max()
-                input_tensor[idx_target, 2 * len(self.common_objs_row_ids) + 2 *
-                             idx_room] = float(room_type_preds[idx_room])
-                input_tensor[idx_target, 2 * len(self.common_objs_row_ids) + 2 *
-                             idx_room + 1] = float(cooccur_value)
+                arr_room_cooccur[idx_room] = cooccur_value
+
+            # get the top values
+            sorted_indices = np.argsort(arr_obj_cooccur)
+            # Get the top 3 values based on the sorted indices
+            top_3_values = arr_obj_cooccur[sorted_indices[-3:]]
+            input_tensor[idx_target, :3] = torch.from_numpy(top_3_values).float()
+
+            sorted_indices = np.argsort(arr_room_cooccur)
+            top_2_values = arr_room_cooccur[sorted_indices[-2:]]
+            input_tensor[idx_target, 3:] = torch.from_numpy(top_2_values).float()
 
         # ======================= prepare other return =================
         rgb_img = Image.fromarray(fron['rgb'])
@@ -316,4 +325,4 @@ if __name__ == "__main__":
     for i in range(len(concat_ds)):
         print(f'i = {i}')
         a = concat_ds[i]
-        # assert 1 == 2
+        print(a['input'])

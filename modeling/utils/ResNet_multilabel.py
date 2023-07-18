@@ -396,7 +396,7 @@ class mlp(nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.fc1 = nn.Linear(88, 256)
+        self.fc1 = nn.Linear(5, 256)
         self.fc2 = nn.Linear(256, 1)
 
     def forward(self, z):

@@ -4,13 +4,13 @@ NAVI:
 PRED:
   VIEW:
     MODEL_TYPE: 'mlp'
-    BATCH_SIZE: 3
+    BATCH_SIZE: 64
     DEVICE: cuda
-    EPOCHS: 5
+    EPOCHS: 25
     EVAL_INTERVAL: 1
     FLAG_VISUALIZE_PRED_LABELS: False
     LOSS_TYPE: L1
-    NUM_WORKERS: 2
+    NUM_WORKERS: 16
     RESUME: ''
     SAVED_FOLDER: 'output/model_weights_input_view'
     LR: 1e-3

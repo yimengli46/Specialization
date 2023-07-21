@@ -9,7 +9,7 @@ import scipy.sparse as sp
 import torch.nn.functional as F
 import clip
 
-from torch_geometric.nn import SAGEConv
+# from torch_geometric.nn import SAGEConv
 
 
 class cnn(nn.Module):

@@ -1,7 +1,7 @@
 import torch.optim as optim
 import os
 import numpy as np
-from modeling.utils.ResNet_multilabel import mlp
+from modeling.utils.ResNet_multilabel import mlp, mlp_wo_room_type
 from sseg_utils.saver import Saver
 from sseg_utils.summaries import TensorboardSummary
 import matplotlib.pyplot as plt
@@ -66,6 +66,9 @@ def train(model_type):
     if model_type == 'mlp':
         cfg.merge_from_file(
             'configs/exp_train_input_view_model_MLP.yaml')
+    elif model_type == 'mlp_wo_room_type':
+        cfg.merge_from_file(
+            'configs/exp_train_input_view_model_MLP_wo_room_type.yaml')
     else:
         raise NotImplementedError("This model is not implemented.")
     cfg.freeze()
@@ -128,6 +131,8 @@ def train(model_type):
     # Define network
     if cfg.PRED.VIEW.MODEL_TYPE == 'mlp':
         model = mlp()
+    elif cfg.PRED.VIEW.MODEL_TYPE == 'mlp_wo_room_type':
+        model = mlp_wo_room_type()
     model = nn.DataParallel(model)
     model = model.cuda()
 
@@ -178,6 +183,8 @@ def train(model_type):
 
             # ================================================ compute loss =============================================
             if cfg.PRED.VIEW.MODEL_TYPE == 'mlp':
+                output = model(inputs)  # batchsize x 1 x H x W
+            elif cfg.PRED.VIEW.MODEL_TYPE == 'mlp_wo_room_type':
                 output = model(inputs)  # batchsize x 1 x H x W
             print(f'output.shape = {output.shape}')
             # print(f'output = {output}')
@@ -237,6 +244,8 @@ def train(model_type):
                     if cfg.PRED.VIEW.MODEL_TYPE == 'mlp':
                         # batchsize x 1 x H x W
                         output = model(inputs)
+                    elif cfg.PRED.VIEW.MODEL_TYPE == 'mlp_wo_room_type':
+                        output = model(inputs)  # batchsize x 1 x H x W
                     print(f'output.shape = {output.shape}')
 
                     loss = criterion(output, gt_outputs.float())

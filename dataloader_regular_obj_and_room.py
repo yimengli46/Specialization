@@ -200,7 +200,10 @@ class view_dataset(data.Dataset):
         # create input tensor with shape num_targets x 10
         # create output tensor with shape num_targets
         num_targets = len(self.targets.keys())
-        num_features = 2 * len(self.common_objs_row_ids) + 2 * len(self.room_types)
+        if cfg.PRED.VIEW.MODEL_TYPE == 'mlp':
+            num_features = 2 * len(self.common_objs_row_ids) + 2 * len(self.room_types)
+        elif cfg.PRED.VIEW.MODEL_TYPE == 'mlp_wo_room_type':
+            num_features = 2 * len(self.common_objs_row_ids)
         input_tensor = torch.zeros((num_targets, num_features)).float()
         detected_or_vicinity_tensor = torch.zeros(num_targets).long()
         output_tensor = torch.zeros(num_targets)
@@ -223,12 +226,13 @@ class view_dataset(data.Dataset):
                 input_tensor[idx_target, i_common_obj_row_id * 2] = 1
                 input_tensor[idx_target, i_common_obj_row_id * 2 + 1] = float(cooccur_value)
 
-            for idx_room in range(len(self.room_types)):
-                cooccur_value = self.weighted_co_matrix_room_and_obj[idx_room, goal_obj_row_ids].max()
-                input_tensor[idx_target, 2 * len(self.common_objs_row_ids) + 2 *
-                             idx_room] = float(room_type_preds[idx_room])
-                input_tensor[idx_target, 2 * len(self.common_objs_row_ids) + 2 *
-                             idx_room + 1] = float(cooccur_value)
+            if cfg.PRED.VIEW.MODEL_TYPE == 'mlp':
+                for idx_room in range(len(self.room_types)):
+                    cooccur_value = self.weighted_co_matrix_room_and_obj[idx_room, goal_obj_row_ids].max()
+                    input_tensor[idx_target, 2 * len(self.common_objs_row_ids) + 2 *
+                                 idx_room] = float(room_type_preds[idx_room])
+                    input_tensor[idx_target, 2 * len(self.common_objs_row_ids) + 2 *
+                                 idx_room + 1] = float(cooccur_value)
 
         # ======================= prepare other return =================
         rgb_img = Image.fromarray(fron['rgb'])

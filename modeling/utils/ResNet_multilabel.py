@@ -9,7 +9,7 @@ import scipy.sparse as sp
 import torch.nn.functional as F
 import clip
 
-from torch_geometric.nn import SAGEConv
+# from torch_geometric.nn import SAGEConv
 
 
 class cnn(nn.Module):
@@ -354,6 +354,7 @@ class clip_fc(nn.Module):
         return y_pred
 
 
+'''
 class GCN(torch.nn.Module):
     def __init__(self,
                  num_classes=10,
@@ -390,6 +391,7 @@ class GCN(torch.nn.Module):
         node_out = self.fc(h)
 
         return node_out
+'''
 
 
 class mlp(nn.Module):
@@ -397,6 +399,20 @@ class mlp(nn.Module):
         super().__init__()
 
         self.fc1 = nn.Linear(88, 256)
+        self.fc2 = nn.Linear(256, 1)
+
+    def forward(self, z):
+        z = F.relu(self.fc1(z))
+        y_pred = self.fc2(z).view(-1)
+
+        return y_pred
+
+
+class mlp_wo_room_type(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        self.fc1 = nn.Linear(68, 256)
         self.fc2 = nn.Linear(256, 1)
 
     def forward(self, z):

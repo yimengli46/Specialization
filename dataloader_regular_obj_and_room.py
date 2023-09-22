@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from modeling.utils.baseline_utils import get_img_coordinates
+from modeling.utils.baseline_utils import get_img_coordinates, compute_mle
 import bz2
 import _pickle as cPickle
 from core import cfg
@@ -115,6 +115,69 @@ class view_dataset(data.Dataset):
         self.weighted_co_matrix_room_and_obj = np.load(
             'output/weighted_kg/weighted_co_matrix_room_and_obj_train_all.npy', allow_pickle=True)
 
+        # use val scene data
+        if False:
+            num_rooms = len(self.room_types) + 1
+            num_classes = 310
+
+            co_matrix_obj_and_obj = np.load(
+                f'output/weighted_kg/weighted_kg_obj_and_obj/{self.split}/co_matrix_{self.scene_name}_{self.floor_id}.npy',
+                allow_pickle=True)
+
+            z_ij_val = np.zeros((num_classes, num_classes, 2), dtype=np.int32)
+            num_images = co_matrix_obj_and_obj.shape[2]
+            for i_image in range(num_images):
+                idx_zero = np.where(co_matrix_obj_and_obj[:, :, i_image] == 0)
+                idx_one = np.where(co_matrix_obj_and_obj[:, :, i_image] == 1)
+
+                rs, cs = idx_zero
+                for i_r in range(len(rs)):
+                    z_ij_val[rs[i_r], cs[i_r], 0] += 1
+
+                rs, cs = idx_one
+                for i_r in range(len(rs)):
+                    z_ij_val[rs[i_r], cs[i_r], 1] += 1
+
+            weighted_co_matrix_val = np.zeros((num_classes, num_classes), dtype=np.float32)
+
+            for r in range(num_classes):
+                for c in range(num_classes):
+                    k_success = z_ij_val[r, c, 1]  # equals to number of 1s
+                    n_trials = z_ij_val[r, c, 0] + z_ij_val[r, c, 1]
+                    mle_estimate = compute_mle(k_success, n_trials)
+                    weighted_co_matrix_val[r, c] = mle_estimate
+
+            self.weighted_co_matrix_obj_and_obj = weighted_co_matrix_val
+
+            co_matrix_room_and_obj = np.load(
+                f'output/weighted_kg/weighted_kg_room_and_obj/{self.split}/co_matrix_{self.scene_name}_{self.floor_id}.npy',
+                allow_pickle=True)
+
+            z_ij_val = np.zeros((num_rooms, num_classes, 2), dtype=np.int32)
+            num_images = co_matrix_room_and_obj.shape[2]
+            for i_image in range(num_images):
+                idx_zero = np.where(co_matrix_room_and_obj[:, :, i_image] == 0)
+                idx_one = np.where(co_matrix_room_and_obj[:, :, i_image] == 1)
+
+                rs, cs = idx_zero
+                for i_r in range(len(rs)):
+                    z_ij_val[rs[i_r], cs[i_r], 0] += 1
+
+                rs, cs = idx_one
+                for i_r in range(len(rs)):
+                    z_ij_val[rs[i_r], cs[i_r], 1] += 1
+
+            weighted_co_matrix_val = np.zeros((num_rooms, num_classes), dtype=np.float32)
+
+            for r in range(num_rooms):
+                for c in range(num_classes):
+                    k_success = z_ij_val[r, c, 1]  # equals to number of 1s
+                    n_trials = z_ij_val[r, c, 0] + z_ij_val[r, c, 1]
+                    mle_estimate = compute_mle(k_success, n_trials)
+                    weighted_co_matrix_val[r, c] = mle_estimate
+
+            self.weighted_co_matrix_room_and_obj = weighted_co_matrix_val
+
     def __len__(self):
         return len(self.sample_name_list)
 
@@ -139,6 +202,7 @@ class view_dataset(data.Dataset):
         num_targets = len(self.targets.keys())
         num_features = 2 * len(self.common_objs_row_ids) + 2 * len(self.room_types)
         input_tensor = torch.zeros((num_targets, num_features)).float()
+        detected_or_vicinity_tensor = torch.zeros(num_targets).long()
         output_tensor = torch.zeros(num_targets)
 
         # check the common objects in the view
@@ -177,7 +241,10 @@ class view_dataset(data.Dataset):
 
         # compute dist
         mat_dist = fron['map_dist_to_cat']
-        gt_mat_dist = mat_dist.copy()
+        original_mat_dist = mat_dist.copy()
+        mask = original_mat_dist == 1
+        original_mat_dist[mask] = 3
+
         if cfg.PRED.VIEW.MULTILABEL_MODE == 'detected_only':
             mask = mat_dist > 1
             mat_dist[mask] = 0
@@ -193,6 +260,8 @@ class view_dataset(data.Dataset):
             goal_obj_row_ids = [self.goal_obj_index_list.index(i) for i in self.targets[goal_obj]]
             target_dist = mat_dist[0, goal_obj_row_ids].max()
             output_tensor[idx_target] = target_dist
+            detected_or_vicinity_tensor[idx_target] = original_mat_dist[0, goal_obj_row_ids].max()
+
         output_tensor = output_tensor.long()
 
         # compute the bbox
@@ -234,7 +303,8 @@ class view_dataset(data.Dataset):
                             detector_pred[0, ind] = 1
 
         return {'rgb': tensor_rgb, 'bbox': bbox_list, 'goal_obj': goal_obj, 'dist': tensor_dist,
-                'original_img': rgb_img, 'original_dist': gt_mat_dist, 'input': input_tensor, 'output': output_tensor}
+                'original_img': rgb_img, 'original_dist': original_mat_dist, 'input': input_tensor,
+                'output': output_tensor, 'detected_or_vicinity': detected_or_vicinity_tensor}
 
 
 def get_all_view_dataset(split, data_folder, hm3d_to_lvis_dict, LVIS_dict, transforms=None, bbox_type='gt'):
@@ -280,6 +350,9 @@ def my_collate(batch):
     batch_output = [dict['output'] for dict in batch]
     output_dict['output'] = torch.stack(batch_output, 0)
 
+    batch_output = [dict['detected_or_vicinity'] for dict in batch]
+    output_dict['detected_or_vicinity'] = torch.stack(batch_output, 0)
+
     return output_dict
 
 
@@ -289,7 +362,7 @@ if __name__ == "__main__":
         'configs/exp_train_input_view_model_MLP.yaml')
     cfg.freeze()
 
-    split = 'train'
+    split = 'val'
 
     data_folder = cfg.PRED.VIEW.DENSELY_SAMPLED_LOCATIONS_SAVED_FOLDER
 

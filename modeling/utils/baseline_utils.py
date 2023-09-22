@@ -474,3 +474,8 @@ def get_img_coordinates(img):
     xv, yv = np.meshgrid(x, y)
     coords = np.stack((xv, yv), axis=2)
     return coords
+
+
+def compute_mle(k_success, n_trials):
+    mle_estimate = k_success / (n_trials + 1e-10)
+    return mle_estimate

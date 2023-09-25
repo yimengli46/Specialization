@@ -1,7 +1,7 @@
 import torch.optim as optim
 import os
 import numpy as np
-from modeling.utils.ResNet_multilabel import mlp
+from modeling.utils.ResNet_multilabel import mlp, mlp_wo_room_type
 from sseg_utils.saver import Saver
 from sseg_utils.summaries import TensorboardSummary
 import matplotlib.pyplot as plt
@@ -61,12 +61,19 @@ def gen_plot(y_pred, y_label):
 
 
 # def eval(model_type):
-model_type = 'mlp'  # 'knowledge_graph'  # 'context_matrix'  # 'resnet'
-trained_model_dir = '/home/yimeng/ARGO_scratch/topo_map_specialization/Specialization/output/model_weights_input_view/mlp/experiment_9/best_checkpoint.pth.tar'
+model_type = 'mlp_wo_room_type'  # 'knowledge_graph'  # 'context_matrix'  # 'resnet'
+if model_type == 'mlp':
+    trained_model_dir = '/home/yimeng/ARGO_scratch/topo_map_specialization/Specialization/output/model_weights_input_view/mlp/experiment_9/best_checkpoint.pth.tar'
+elif model_type == 'mlp_wo_room_type':
+    trained_model_dir = '/home/yimeng/ARGO_scratch/topo_map_specialization/Specialization/output/model_weights_input_view/mlp_wo_room_type/experiment_0/best_checkpoint.pth.tar'
+
 
 if model_type == 'mlp':
     cfg.merge_from_file(
         'configs/exp_train_input_view_model_MLP.yaml')
+elif model_type == 'mlp_wo_room_type':
+    cfg.merge_from_file(
+        'configs/exp_train_input_view_model_MLP_wo_room_type.yaml')
 else:
     raise NotImplementedError("This model is not implemented.")
 cfg.freeze()
@@ -119,6 +126,8 @@ dataloader_val = data.DataLoader(dataset_val,
 # Define network
 if cfg.PRED.VIEW.MODEL_TYPE == 'mlp':
     model = mlp()
+elif cfg.PRED.VIEW.MODEL_TYPE == 'mlp_wo_room_type':
+    model = mlp_wo_room_type()
 model = nn.DataParallel(model)
 model = model.cuda()
 
@@ -178,6 +187,8 @@ with torch.no_grad():
 
         if cfg.PRED.VIEW.MODEL_TYPE == 'mlp':
             # batchsize x 1 x H x W
+            output = model(inputs)
+        elif cfg.PRED.VIEW.MODEL_TYPE == 'mlp_wo_room_type':
             output = model(inputs)
         print(f'output.shape = {output.shape}')
 

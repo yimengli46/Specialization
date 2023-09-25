@@ -255,6 +255,9 @@ class view_dataset(data.Dataset):
         elif cfg.PRED.VIEW.MULTILABEL_MODE == 'detected_and_nearby':
             mask = mat_dist > 1
             mat_dist[mask] = 1
+        elif cfg.PRED.VIEW.MULTILABEL_MODE == 'visible_only':
+            mask = mat_dist > 1
+            mat_dist[mask] = 1
         # print(f'dist = {mat_dist}')
         tensor_dist = torch.tensor(mat_dist).long()
         # print(f'tensor_dist = {tensor_dist.shape}')

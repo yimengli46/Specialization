@@ -120,7 +120,7 @@ class Data_Gen_View:
             # check if the start point is navigable
             if not self.env.is_navigable(agent_pos):
                 print(f'start pose is not navigable ...')
-                #assert 1 == 2
+                # assert 1 == 2
                 continue
 
             if cfg.NAVI.HFOV == 90:
@@ -186,7 +186,7 @@ class Data_Gen_View:
                         # load rgb image, depth and sseg
                         rgb_img = obs['rgb']
                         depth_img = obs['depth'][:, :, 0]
-                        #print(f'depth_img.shape = {depth_img.shape}')
+                        # print(f'depth_img.shape = {depth_img.shape}')
                         InsSeg_img = obs["semantic"]
                         if len(InsSeg_img.shape) > 2:
                             InsSeg_img = np.squeeze(InsSeg_img)
@@ -198,27 +198,27 @@ class Data_Gen_View:
                     panorama_rgb = np.concatenate(rgb_lst, axis=1)
                     panorama_depth = np.concatenate(depth_lst, axis=1)
                     panorama_sseg = np.concatenate(sseg_lst, axis=1)
-                    #print(f'panorama_depth.shape = {panorama_depth.shape}')
+                    # print(f'panorama_depth.shape = {panorama_depth.shape}')
 
                     # compute the angle between frontier and agent and get the observation
                     for fron in frontiers:
                         fron_centroid_coords = (
                             int(fron.centroid[1]), int(fron.centroid[0]))
-                        #print(f'fron_coords = {fron_centroid_coords}, agent_map_coords = {agent_map_coords}')
+                        # print(f'fron_coords = {fron_centroid_coords}, agent_map_coords = {agent_map_coords}')
                         angle_fron_agent = math.atan2(agent_map_coords[1] - fron_centroid_coords[1],
                                                       fron_centroid_coords[0] - agent_map_coords[0])
-                        #print(f'angle_fron_agent = {math.degrees(angle_fron_agent)}')
-                        #print(f'rot in drawing is {math.degrees(rot)}, rotate_rot is {math.degrees(rotate_rot)}')
+                        # print(f'angle_fron_agent = {math.degrees(angle_fron_agent)}')
+                        # print(f'rot in drawing is {math.degrees(rot)}, rotate_rot is {math.degrees(rotate_rot)}')
                         angle_agent = -(agent_map_pose[2] - .5 * math.pi)
-                        #print(f'angle_agent = {math.degrees(angle_agent)}')
+                        # print(f'angle_agent = {math.degrees(angle_agent)}')
                         deg = math.degrees(minus_theta_fn(
                             angle_agent, angle_fron_agent))
-                        #print(f'angle difference is {deg}')
+                        # print(f'angle difference is {deg}')
                         deg = -deg + 135
                         if deg < 45:
                             deg += 360
                         assert deg >= 45
-                        #print(f'final deg = {deg}')
+                        # print(f'final deg = {deg}')
                         bin_from_deg = int(cfg.SENSOR.OBS_WIDTH / 90 * deg)
 
                         OBS_HALF_WIDTH = int(cfg.SENSOR.OBS_WIDTH / 2)
@@ -285,7 +285,7 @@ class Data_Gen_View:
                                             s=50,
                                             c='red',
                                             zorder=5)
-                                #ax.plot(x_coord_lst, z_coord_lst, lw=5, c='blue', zorder=3)
+                                # ax.plot(x_coord_lst, z_coord_lst, lw=5, c='blue', zorder=3)
                                 ax1.scatter(x_coord_lst,
                                             z_coord_lst,
                                             c='blue',
@@ -331,7 +331,7 @@ class Data_Gen_View:
                                 ax5.set_title('semantic segmentation')
 
                                 fig.tight_layout()
-                                #plt.title(f'frontier egocentric view')
+                                # plt.title(f'frontier egocentric view')
                                 plt.show()
 
                         # ============================ save the added frontiers set images =====================
@@ -400,7 +400,7 @@ class Data_Gen_View:
                                       s=50,
                                       c='red',
                                       zorder=5)
-                        #ax.plot(x_coord_lst, z_coord_lst, lw=5, c='blue', zorder=3)
+                        # ax.plot(x_coord_lst, z_coord_lst, lw=5, c='blue', zorder=3)
                         ax[0].scatter(x_coord_lst,
                                       z_coord_lst,
                                       c=range(len(x_coord_lst)),

@@ -13,7 +13,7 @@ PRED:
     INPUT: depth_and_sem
     NUM_GENERATED_SAMPLES_PER_SCENE: 100
     NUM_PROCESS: 24
-    multiprocessing: 'mp'
+    multiprocessing: 'single'
     GEN_SAMPLES_SAVED_FOLDER: 'output/training_data_input_view_1000samples'
     EPS_SAVE_GAP: 10
     FLAG_VIS_FRONTIER_ON_MAP: False
